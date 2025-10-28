@@ -1,0 +1,439 @@
+use PracticeDB;
+
+exec sp_rename 'TwoWheeler.Brand','Manufacturer','column';
+
+update TwoWheeler
+set Price=95000
+where Model='Splendor';
+
+select Model,Price,Manufacturer,
+'TwoWheeler' as VehicleType
+from TwoWheeler
+union all
+select Model,Price,Brand,
+'FourWheeler' as VehicleType 
+from FourWheeler;
+
+alter table FourWheeler
+alter column Price decimal check (Price<100000000); 
+
+alter table FourWheeler
+add constraint CK_PriceMax
+check(Price<100000000);
+
+create view
+V_Expensive_Vehicles as
+select Model,Brand from FourWheeler
+where Price>5000000;
+
+select * from V_Expensive_Vehicles;
+
+select abs(max(Price)-min(Price)) as Absolute_diff from TwoWheeler;
+
+select Model,
+       case
+        when Price<90000 then ceiling(Price)
+        when Price>=90000 then floor(Price)
+        end as RoundedPrice
+from TwoWheeler;
+
+select Brand,
+concat(upper(left(Brand,3)),'-',abs(Stock_left-5)) as InventoryCode 
+from FourWheeler;
+
+select Manufacturer,
+concat(left(Manufacturer,1),replicate('*',len(Manufacturer)-2),right(Manufacturer,1)) as ManufacturerCode
+from TwoWheeler;
+
+create table Events(
+   EventID int primary key,
+   EventName varchar(100) not null,
+   EventDate date not null,
+   DurationDays int not null
+);
+
+create table Appointments(
+   ApptID int primary key,
+   AttendeeName varchar(100) not null,
+   StartTime datetime not null,
+   EndTime datetime not null
+);
+
+insert into Events
+values
+(101,'Q4 Planning','2025-11-15',5),
+(102,'Product Launch','2025-10-27',0),
+(103,'Holiday Break','2025-12-24',7),
+(104,'System Audit','2026-01-01',1);
+
+insert into Appointments
+values
+(201,'Client Check-in','2025-10-27 10:00:00','2025-10-27 11:30:00'),
+(202,'Project Review','2025-10-26 14:30:00','2025-10-26 15:00:00'),
+(203,'Team Sync','2025-09-15 09:00:00','2025-09-15 10:00:00');
+
+select * from Events;
+select * from Appointments;
+
+select getdate() as current_dat;
+select current_timestamp;
+select datepart(month,'2025-10-10');
+select datename(month,'2025-10-10');
+select datename(day,'2025-10-19');
+select datename(year,'2025-10-10');
+select datename(weekday,'2025-10-27');
+
+select dateadd(month,2,getdate());
+select datename(weekday,dateadd(month,2,getdate()));
+select dateadd(hour,4,getdate());
+select datename(weekday,dateadd(year,1,'2025-11-03'));
+select datename(weekday,dateadd(day,53,getdate()));
+
+select datediff(day,getdate(),'2025-11-03'),datediff(day,'2025-11-03',getdate());
+select datediff(month,getdate(),'2025-11-03');
+select datediff(month,getdate(),'2025-10-29');
+select datediff(month,getdate(),'2025-10-10');
+
+select EventName,
+dateadd(day,DurationDays,EventDate) as Event_ends_on 
+from events
+
+select AttendeeName,
+concat(datediff(minute,StartTime,EndTime),' minutes') as Duration 
+from Appointments;
+
+select EventName,EventDate from Events
+where datepart(year,EventDate) =2025;
+
+select EventName,EventDate from Events
+where year(EventDate)=2025;
+
+select ApptID,AttendeeName from Appointments
+where datename(weekday,StartTime) ='Sunday';
+
+select EventName,
+datediff(day,EventDate,getdate()) from Events;
+
+select ApptID,
+datepart(hour,StartTime) as [Hour] 
+from Appointments;
+
+SELECT
+    ApptID,
+    DATEPART(HOUR, StartTime) AS [Hour],
+    CONVERT(VARCHAR(8), StartTime, 108) AS FormattedTime 
+FROM
+    Appointments;
+
+select EventName,case
+    when DurationDays =0 then dateadd(day,10,EventDate)
+    when DurationDays>0 then dateadd(day,30+DurationDays,EventDate)
+    end as ReviewDate
+from Events;
+
+select convert(varchar(8),StartTime,108) as [Formatted StartTime] from Appointments;
+
+select EventName,
+datediff(day,getdate(),Eventdate) as DaysLeft 
+from Events;
+
+select AttendeeName,StartTime from Appointments
+where datename(weekday,StartTime)='Monday' and datepart(hour,StartTime)<10;
+
+select EventName,
+convert(date,dateadd(day,60+DurationDays,Eventdate)) as NewDate
+from Events;
+
+select datename(month,EventDate) as TargetMonth,
+count(EventName) as No_of_Events 
+from Events
+group by datename(month,EventDate);
+
+select ApptID,AttendeeName,
+datediff(month,getdate(),StartTime) as Months 
+from Appointments;
+
+select ApptID,AttendeeName,
+datediff(month,StartTime,getdate()) as Months 
+from Appointments;
+
+select Model,case
+   when Price>90000 then 'Premium'
+   else 'Standard'
+   end as PriceCategory
+from TwoWheeler;
+
+select Model,Manufacturer from TwoWheeler
+where (Price between 80000 and 950000) and Stock_left>5;
+
+select Model,case
+     when Stock_left=10 then 'Reorder soon'
+     when Model like '%a%' then 'Review Marketing'
+     else 'Stable'
+     end as StockStatus
+from TwoWheeler;
+
+select Model,case
+    when Manufacturer in ('Hero','Honda') then 'Asian Mfg'
+    else left(Manufacturer,2)
+    end as StandardBrand
+from TwoWheeler;
+
+select Model,case
+    when Price>=90000 then 'High end'
+    when Price between 80000 and 89999 then 'Mid Range'
+    else 'Budget'
+    end as PriceBucket
+from TwoWheeler;
+
+select Model,case
+    when Stock_left=10 then Price*1.5
+    when Stock_left<10 then Price*1.1
+    end as [Adjusted Value]
+from TwoWheeler;
+
+select C.first_name,C.last_name,case
+        when sum(amount)>50000 then 'Tier1'
+        else 'Tier2'
+        end as Tier
+from Customers as C inner join Orders as O 
+on C.customer_id=O.customer_id
+inner join Payments as PY on
+O.order_id=PY.order_id
+group by C.first_name,C.last_name;
+
+select Category,
+count(distinct product_id) as [total unique products],
+avg(price) as Avg_price from Products
+group by Category;
+
+select PR.product_name,O.order_id 
+from Orders as O inner join Products as PR
+on O.product_id=PR.product_id
+left join Payments as PY 
+on O.order_id=PY.order_id
+where PY.payment_id is null and quantity>=2;
+
+select City,case
+         when sum(amount)>100000 then 'High Market'
+         else 'Standard Market'
+         end as RevenueCategory
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Payments as PY
+on O.order_id=PY.order_id
+group by City;
+
+select PR.product_name,Price
+from 
+Products as PR left join Orders as O
+on PR.product_id=O.product_id
+where O.order_id is null
+and PR.price<(select avg(Price) from Products);
+
+select Product_name,Price 
+from Products 
+where Price=(select max(Price) from Products);
+
+select distinct C.first_name,C.last_name 
+from Customers as C
+inner join Orders as o on C.customer_id=O.customer_id
+inner join Products as PR on O.product_id=PR.product_id
+where category ='Electronics';
+
+select C.first_name,C.last_name,
+avg(select sum(amount) from )as avg_spending 
+from Customers C inner join Orders O
+on c.customer_id=O.customer_id
+inner join Payments as PY on PY.order_id=O.order_id
+group by C.first_name,C.last_name;
+
+select Model,case
+        when (Price between 80000 and 90000) and Stock_left<5 then Price*1.15
+        else Price
+        end as AsjustedPrice
+from TwoWheeler;
+
+select Model,case
+   when Manufacturer ='Hero' or Model like '%m%' then 'Feature'
+   else 'Standard'
+   end as MarketingFlag
+from TwoWheeler;
+
+select Model,Manufacturer,case
+        when Price=95000 then 'Top Price'
+        else 'High Priced Model'
+        end as PriceNote
+from TwoWheeler where Price>85000 and Model not like '%S%';
+
+alter table Customers
+add email varchar(50);
+
+select * from Customers;
+
+update Products
+set product_name='SQL Book' where product_name='SQL Cookbook';
+
+update Products
+set Price=1500 where product_name='SQL Book';
+
+select * from Products;
+
+select concat(C.first_name,' ',C.last_name) as [Customer Name],
+O.order_id,PR.product_name
+from Customers C inner join Orders O
+on C.customer_id=O.customer_id
+inner join Products PR on O.product_id=PR.product_id;
+
+select category from Products
+union
+select City from Customers;
+
+select Product_name,
+round(Price,0) as RoundedPrice 
+from Products;
+
+select upper(concat(first_name,' ',last_name)) as [Customer Name] from Customers;
+
+select sum(amount) as Total_amount from Payments;
+
+select product_name,
+(price*1.18) as Total_price 
+from Products;
+
+select order_id from Orders where
+datename(month,order_date)='October' and year(order_date)=2025;
+
+select PR.product_name,sum(quantity) as Total_ordered_quantity from
+Orders as O inner join Products as PR on O.product_id=PR.product_id
+group by PR.product_name;
+
+select O.order_id,O.order_date,case
+            when PY.payment_id is null then 'Unpaid'
+            else 'Paid'
+            end as Payment_status
+from Orders as O left join Payments as PY
+on O.order_id=PY.order_id;
+
+select product_name from Products
+where Price between 500 and 5000;
+
+select concat(first_name,' ',last_name)as Customer_name from Customers
+where city='Delhi' or last_name like 'B%';
+
+select left(city,1),count(*) from Customers
+group by left(city,1) order by count(*) ;
+
+select city,count(*) from Customers
+group by city order by city;
+
+select category,upper(product_name) as PN
+from Products
+group by category,product_name order by PN;
+
+select len(last_name),count(*) from Customers
+group by len(last_name) order by len(last_name);
+
+select lower(city) as City,count(*) as [Count] from Customers
+group by City order by City;
+
+select city,max(last_name) from Customers
+group by city order by city;
+
+select 8 from Orders;
+select * from Orders;
+
+use BikeStorePracticeDB;
+
+select * from Orders;
+
+use myDB;
+
+use PracticeDB;
+
+select * from SalesData;
+
+
+select category,sum(sales) as Total_sales,sum(Profit) as Total_profit from SalesData group by category;
+
+select customer_name from SalesData group by customer_name having sum(sales) >5000;
+
+select region,ship_mode,count(*) from SalesData
+group by region,ship_mode order by region;
+
+select ORDER_ID,SALES,case
+             when PROFIT<0 then 'Loss'
+             when DISCOUNT>0.2 then 'Heavy Discount'
+             else 'Normal Sale'
+            end as OrderStatus
+from Salesdata;
+
+select REGION,sum(case
+        when category='Technology' then 1
+        else 0
+        end
+) as Total_orders from SalesData
+group by REGION;
+
+create table Inventory(
+    ProductID int primary key,
+    PoductName varchar(100) not null,
+    QuantitySold int,
+    UnitCost decimal(10,4)
+);
+
+insert into Inventory
+values
+(101,'Widget X',50,12.3456),
+(102,'Service Y',10,99.9900),
+(103,'Part Z',125,0.7500);
+
+select * from Inventory;
+
+create table LogData(
+  LogID int primary key,
+  UserID varchar(20),
+  EventTime varchar(50)
+);
+
+insert into LogData
+values
+(501,12345,'2025-10-27 15:00:00'),
+(502,45678,'11/05/2025'),
+(503,12345,'20251215');
+
+select * from LogData;
+
+select convert(datetime,Eventtime,101) from LogData;
+
+select cast(103 as decimal(10,2));
+select cast(109.237 as int);
+select convert(datetime,'20251010',101);
+select convert(varchar(55),getdate(),126);
+
+exec sp_help 'SalesData';
+
+select COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH
+from INFORMATION_SCHEMA.COLUMNS
+where TABLE_NAME='SalesData';
+
+select ProductID,cast(UnitCost as int) as WholeCost from Inventory;
+
+select UserID,convert(datetime,EventTime,101) as ValidTime from LogData;
+
+select * from Inventory;
+
+select sum(cast(QuantitySold as decimal(10,4))*UnitCost) as Total_cost from Inventory;
+
+select EventTime from LogData where cast(UserID as int)=12345;
+
+exec sp_rename 'Inventory.PoductName','ProductName','column';
+
+
+select cast(ProductName as varchar(50)) as CombinedValue from Inventory
+union all
+select cast(EventTime as varchar(50)) from LogData;
+
+
+
+
