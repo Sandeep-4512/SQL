@@ -1,1 +1,618 @@
+use PracticeDB;
 
+create table TestTable(
+  Id int primary key,
+  Name varchar(25),
+  Mobile varchar(25),
+  DOB date
+);
+
+insert into TestTable
+values
+(1,'Name1','87265','2020-01-01'),
+(2,'Name2','78271','2025-01-01'),
+(3,'Name3','78821','2011-01-02');
+
+select * from TestTable;
+
+exec sp_rename 'TestTable.Mobile','Phone','column';
+
+exec sp_rename 'TestTable','Test1';
+
+select * from Test1;
+
+alter table Test1
+add email varchar(25);
+
+select * from Test1;
+
+update Test1
+set email='name@email.com';
+
+update Test1
+set email='name1@email.com'
+where Name='Name1';
+
+alter table Test1
+drop column Phone;
+
+insert into Test1(id,Name,email)
+values
+(4,'Name4','name4@email.com');
+
+delete from Test1
+where DOB is null;
+
+alter table Test1
+add Salary decimal(6,2);
+
+update Test1
+set Salary=100.00,
+DOB='2023-01-01'
+where Name in('Name4','Name1');
+
+select * from Test1;
+
+select * from Test1
+where Salary is null;
+
+update Test1
+set Salary=0
+where Salary is null;
+
+delete from Test1
+where Salary=0;
+
+alter table Test1
+alter column Salary decimal(10,2);
+
+select * from Products;
+
+create table Employees(
+  EmployeeID int primary key,
+  Name varchar(30),
+  DepartmentID int
+);
+
+insert into Employees
+values
+(101,'Alice',1),
+(102,'Bob',2),
+(103,'Charlie',3),
+(104,'David',1);
+
+create table Departments(
+ DepartmentID int primary key,
+ DepartmentName varchar(30)
+);
+
+insert into Departments
+values
+(1,'Sales'),
+(2,'Marketing'),
+(3,'HR');
+
+select E.Name,D.DepartmentName
+from Employees as E inner join Departments as D
+on E.DepartmentID=D.DepartmentID;
+
+select E.Name,D.DepartmentName
+from Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID;
+
+update Departments
+set DepartmentID=4
+where DepartmentName='HR';
+
+select E.Name,D.DepartmentName
+from Employees as E right join Departments as D
+on E.DepartmentID=D.DepartmentID;
+
+select E.Name,D.DepartmentName
+from Employees as E full outer join Departments as D
+on E.DepartmentID=D.DepartmentID;
+
+select D.DepartmentName
+from Employees as E right  join Departments as D
+on E.DepartmentID=D.DepartmentID
+where E.Name is null;
+
+select E.Name from
+Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID
+where D.DepartmentName is null;
+
+alter table Employees
+add salary int;
+
+update Employees
+set
+   Salary=case
+           when EmployeeID=101 then 50000
+		   when EmployeeID=102 then 60000
+		   when EmployeeID=103 then 55000
+		   when EmployeeID=104 then 70000
+		   else null
+		end;
+
+select * from Employees;
+
+
+select D.DepartmentName,avg(Salary) as Avg_salary
+from Employees as E inner join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,count(EmployeeID) as EmpCount
+from Employees as E inner join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,max(Salary) as Highest_salary
+from Employees as E inner join Departments as D 
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select E.Name
+from Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID
+where D.DepartmentID is null;
+
+select D.DepartmentName
+from Employees as E right join Departments as D
+on E.DepartmentID=D.DepartmentID
+where E.Name is null;
+
+select D.DepartmentName,count(E.Name) as Emp_count
+from Departments as D right join Employees as  E
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,count(E.Name)
+from Employees as E right join Departments as D 
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,sum(E.Salary) as TotalSalary
+from Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,sum(E.Salary) as TotalSalary
+from Departments as D left join Employees as E
+on D.DepartmentID=E.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,min(Salary) as MinSalary
+from Employees as E inner join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName
+from Departments as D left join Employees as E 
+on D.DepartmentID=E.DepartmentID
+where E.EmployeeID is null;
+
+select D.DepartmentName,avg(Salary) as AvgSalary
+from Departments as D right join Employees as E
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select E.Name
+from Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID
+where D.DepartmentID is null;
+
+select D.DepartmentName,count(E.EmployeeID) as EmpCount
+from Employees as E left join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,count(E.EmployeeID) as EmpCount
+from Departments as D left join Employees as E
+on D.DepartmentID=E.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,count(E.EmployeeID) as EmpCount
+from Employees as E inner join Departments as D
+on E.DepartmentID=D.DepartmentID
+group by D.DepartmentName;
+
+select D.DepartmentName,sum(Salary) as TotalSalary
+from Departments as D right join Employees as E
+on D.DepartmentID=E.DepartmentID
+group by D.DepartmentName;
+
+select PR.category,sum(amount) as TotalRevenue
+from Orders as O inner join Products as PR
+on O.product_id=PR.product_id
+inner join Payments as PY on
+O.order_id=PY.order_id
+group by category;
+
+select C.first_name,C.last_name,C.city
+from Customers as C left join Orders as O
+on C.customer_id=O.customer_id
+group by C.first_name,C.last_name,C.city
+having count(O.order_id)=0;
+
+select C.first_name,C.last_name,C.city
+from Customers as C left join Orders as O
+on C.customer_id=O.customer_id
+where O.order_id is null;
+
+select * from Customers;
+
+insert into Customers
+values
+(7,'Lisa','Taylor','lisa.t@email.com','Kolkata');
+
+select PR.product_name,PR.price
+from Products as PR left join Orders as O
+on PR.product_id=O.product_id
+where O.order_id is null;
+
+select O.order_id,O.customer_id
+from Orders as O left join Payments as PY
+on O.order_id=PY.order_id
+where PY.payment_id is null;
+
+select PR.product_id,PR.product_name
+from Orders as O left join Products as PR
+on O.product_id=PR.product_id
+left join Payments as PY
+on O.order_id=PY.order_id
+where PY.order_id is null;
+
+select PR.product_name,PR.product_id
+from Orders as O inner join Products as PR
+on O.product_id=PR.product_id
+left join Payments as PY on O.order_id=PY.order_id
+where PY.payment_id is null;
+
+select C.first_name,C.last_name
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Payments as PY on O.order_id=PY.order_id
+group by C.first_name,C.last_name
+having sum(amount)>50000;
+
+select PY.payment_method
+from Orders as O inner join Payments as PY 
+on O.order_id=PY.order_id
+group by PY.payment_method
+having count(O.order_id)>1 and sum(amount)>5000;
+
+select payment_method
+from Payments
+group by payment_method
+having count(order_id)>1 and sum(amount)>5000;
+
+select C.first_name,C.last_name
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Payments as PY
+on O.order_id=PY.order_id
+where city in ('Delhi','Mumbai')
+group by C.first_name,C.last_name
+having sum(amount)>10000;
+
+select C.first_name,C.last_name,PR.product_name,quantity
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Products as PR on O.product_id=PR.product_id;
+
+select C.first_name,C.last_name,O.order_id
+from Customers as C inner join Orders as o
+on C.customer_id=O.customer_id
+left join Payments as PY on O.order_id=PY.order_id
+where PY.payment_id is null;
+
+select PR.product_name,category
+from Products as Pr left join Orders as o
+on PR.product_id=O.product_id
+where O.order_id is null;
+
+select PY.payment_method,count(O.order_id) as total_orders
+from Orders as O inner join Payments as PY
+on O.order_id=PY.order_id
+group by PY.payment_method;
+
+select C.first_name,C.last_name
+from Customers as C left join Orders as O
+on C.customer_id=O.customer_id
+where O.order_id is null;
+
+select C.first_name,C.last_name
+from Customers C left join Orders O
+on C.customer_id=O.customer_id
+group by C.first_name,C.last_name
+having count(O.order_id) =0;
+
+select category,max(price) as Max_price
+from Products group by category;
+
+select O.order_id,PY.payment_method
+from Orders as O left join Payments as PY
+on O.order_id=PY.order_id
+where PY.payment_id is not null;
+
+select O.order_id,PY.payment_method
+from Orders as O inner join Payments as PY
+on O.order_id=PY.order_id;
+
+select distinct C.city, category
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Products as PR
+on O.product_id=PR.product_id;
+
+select C.first_name,C.last_name
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Payments as PY
+on O.order_id=PY.order_id
+where PY.payment_method='UPI';
+
+select C.city,sum(amount) as Revenue_generated
+from Customers C inner join Orders O
+on C.customer_id=O.customer_id
+inner join Payments as PY
+on O.order_id=PY.order_id
+group by C.city;
+
+create table Customer_orders as
+select C.first_name,C.last_name,O.order_id,O.order_date,amount
+from Customers as C left join Orders as O
+on C.customer_id=O.customer_id
+left join Payments as PY on O.order_id=PY.order_id;
+
+select C.first_name,C.last_name,O.order_id,O.order_date,amount
+into Customer_orders
+from Customers as c left join Orders as O
+on C.customer_id=O.customer_id
+left join Payments as PY on O.order_id=PY.order_id;
+
+select * from Customer_orders;
+
+select * from Orders;
+
+
+select * into
+Customer_orders_archive
+from Customer_orders
+where 1=0;
+
+select * from Customer_orders_archive;
+
+create table TwoWheeler(
+  ProductID varchar(10) primary key,
+  Model varchar(10),
+  Price decimal(10,2)
+);
+
+alter table TwoWheeler
+add Brand varchar(25);
+
+select * from TwoWheeler;
+
+insert into TwoWheeler
+values
+('HS101','Splendor',80000.00,'Hero'),
+('HSN102','Shine',90000.00,'Honda'),
+('HG102','Glamour',95000.00,'Hero');
+
+create table FourWheeler(
+  ProductID varchar(10) primary key,
+  Model varchar(10),
+  Price decimal(10,2),
+  Brand varchar(25)
+);
+
+insert into FourWheeler
+values
+('RT101','Triber',4000000.00,'Renault'),
+('TF101','Fortuner',50000000.00,'Toyota');
+
+select * from FourWheeler;
+
+select * from TwoWheeler
+union
+select * from FourWheeler;
+
+insert into FourWheeler
+values
+('HSN102','Shine',90000.00,'Honda');
+
+select * from TwoWheeler
+union all
+select * from FourWheeler;
+
+alter table TwoWheeler
+alter column Price decimal (8,2);
+
+alter table FourWheeler
+alter column Price int;
+
+alter table TwoWheeler
+add Stock_left int;
+
+select * from TwoWheeler;
+
+alter table FourWheeler
+add Quantity varchar(10);
+
+select Stock_left as Quantity from TwoWheeler
+union
+select Quantity from FourWheeler;
+
+update TwoWheeler
+set Stock_left=3
+where ProductID='HS101';
+
+update FourWheeler
+set Quantity='9'
+where ProductID='RT101';
+
+update FourWheeler
+set Quantity='One'
+where ProductID='TF101';
+
+update FourWheeler
+set Quantity=10;
+
+update TwoWheeler
+set Stock_left=10
+where Stock_left is null;
+
+select * from TwoWheeler
+union
+select * from FourWheeler;
+
+select * from FourWheeler
+union
+select * from TwoWheeler;
+
+select Model,Price,Brand from TwoWheeler
+union all
+select model,Price,Brand from FourWheeler;
+
+select Model,Price,Brand from TwoWheeler
+union
+select model,Price,Brand from FourWheeler;
+
+select Brand,'TwoWheeler' as Vehicle_type from TwoWheeler
+union all
+select Brand,'FourWheeler' as Vehicle_type  from FourWheeler;
+
+alter table TwoWheeler
+add WareHouseLocation varchar(50);
+
+alter table FourWheeler
+alter column Price decimal(10,2);
+
+exec sp_rename 'FourWheeler.Quantity','Stock_left','column';
+
+alter table TwoWheeler
+drop column ProductID;
+
+alter table FourWheeler
+alter column Brand varchar(25) not null;
+
+alter table TwoWheeler
+drop constraint PK_TwoWheeler_ProductID;
+
+select * from TwoWheeler;
+
+select * from FourWheeler;
+
+select Model,Brand from TwoWheeler
+where Stock_left=10
+union all
+select Model,Brand from FourWheeler
+where Stock_left=10;
+
+select ProductID,Model,Price from TwoWheeler
+union all
+select NULL,Model,Price from FourWheeler;
+
+select Brand from TwoWheeler where Price>100000
+union
+select Brand from FourWheeler where Price>100000;
+
+select * from TwoWheeler;
+
+select Model,Price as CostInRupees from FourWheeler;
+
+select distinct Brand from TwoWheeler;
+
+select Model, Price *Stock_left as Total_value from TwoWheeler;
+
+select concat(Brand,' ',Model) as VehicleIdentifier from TwoWheeler;
+
+select Model,concat('In stock:',Stock_left) as Stock_status from TwoWheeler;
+
+select Model,concat('In stock:',Stock_left,' units') as Stock_status from FourWheeler;
+
+select Model,
+    case
+	  when Stock_left=10 then 'High Stock'
+	  when Stock_left<10 then 'Low Stock'
+	 end
+	 as InventoryLevel
+from TwoWheeler;
+
+select sum(case
+     when Brand='Hero' then Price*Stock_left
+	 else 0
+	 end)
+	 as HeroTotalValue
+from twoWheeler;
+
+select Model,round(Price,-2) From TwoWheeler;
+
+select concat('The average price is ',avg(Price)) as Avg_price from FourWheeler;
+
+select top 1 Model from FourWheeler order by Price;
+
+select Model from TwoWheeler order by Brand,Price DESC;
+
+select Model,Brand,Price from FourWheeler order by 2;
+
+select sum(Stock_left) as Inventory_left,
+ count(distinct Brand) as UniqueBrands
+ from TwoWheeler;
+
+ select Model,Price from TwoWheeler
+ where Brand='Honda';
+
+ select Model,Brand from FourWheeler
+ where Price between 1000000 and 5000000;
+
+ select Model,Price from TwoWheeler
+ where Brand in ('Honda','Yamaha','Suzuki');
+
+ select Model,Brand from Fourwheeler
+ where Price>5000000 and Stock_left<15;
+
+ select * from TwoWheeler
+ where Model not like 'S%';
+
+ select Model,Price from FourWheeler
+ where (Brand='Toyota' and Price > 40000000) or Stock_left=10;
+
+ select * from TwoWheeler
+ where Price<=90000 and Stock_left>5;
+
+ select Model,Brand from FourWheeler
+ where Price>400000 or Brand like 'R%';
+
+select sum(Price*Stock_left) as Total_financial_value from TwoWheeler;
+
+select min(Price) from FourWheeler;
+
+select count(distinct Model) from TwoWheeler;
+
+select avg(Price) from FourWheeler;
+
+select max(Price) from TwoWheeler;
+
+select abs(100000-Price) as PriceDifference from TwoWheeler;
+
+select Model,power(Stock_left,2)as StockSquared from TwoWheeler;
+
+select Model,floor(Price) as FloorPrice from FourWheeler;
+
+select Model,Price%10000 as Remainder_value from TwoWheeler;
+
+select Model,SQRT(Price) as PriceRooted from FourWheeler;
+
+select ceiling(Price) as CeiledPrice,FLOOR(Price) as FlooredPrice from TwoWheeler;
+
+select round(4583.8767,2);
+select round(4567.739,0);
+select round(783381.781230,0);
+select round(361273.9398,-2);
+select abs(-3);
+select Floor(9.8);
+select ceiling(9.1),ceiling(9.0);
