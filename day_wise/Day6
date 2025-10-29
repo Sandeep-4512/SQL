@@ -1,0 +1,253 @@
+use PracticeDB
+
+select 
+sum(
+	case
+	when category='Furniture' then sales
+	end
+	)
+	as FurnitureSales,
+sum(
+	case
+	when category='Technology' then sales
+	end
+	) 
+	as TechnologySales
+from SalesData;
+
+select order_id,customer_name from SalesData
+where profit<0 and ship_mode='Second Class';
+
+select customer_name,upper(left(city,3)) as CityCode from SalesData
+where city like 'L%';
+
+select customer_name,count(order_id) from SalesData
+group by customer_name having count(order_id)<3;
+
+select product_name,case
+			when category='Furniture' 
+			then upper(left(product_name,2))
+			else category
+			end as ProductCode
+from SalesData;
+
+alter table SalesData
+add constraint CK_Discount_Check
+check(discount<=5);
+
+alter table SalesData
+drop constraint CK_Discount_Check;
+
+alter table SalesData
+add constraint CK_Discount_Check_New
+check(discount<=0.5);
+
+select order_id,
+datediff(month,order_date,ship_date) as Months
+from SalesData;
+
+select round(avg(sales),-3) from Salesdata;
+
+select order_id,profit from SalesData
+where cast(quantity as int)=5;
+
+select customer_name,region from SalesData
+union all
+select product_name,category from SalesData;
+
+select EventName,case
+		when datediff(day,getdate(),EventDate)>0 
+		then datediff(day,getdate(),EventDate)
+		else 0
+		end as DaysRemaining
+from Events;
+
+select ApptID,AttendeeName,convert(varchar(16),StartTime,120) as FormattedTime from Appointments
+where datepart(hour,StartTime) between 09 and 13;
+
+select ApptID,AttendeeName,datediff(month,StartTime,getdate()) as Months from Appointments;
+
+select ApptID,AttendeeName,concat(
+									floor(datediff(minute,StartTime,EndTime)/60),
+									' Hours and ',
+									datediff(minute,StartTime,EndTime)%60,
+									'Minutes') as Duration
+from Appointments;
+
+select ApptID,AttendeeName from Appointments
+where datepart(hour,StartTime) between 09 and 17
+and datepart(hour,Endtime) between 09 and 17;
+
+select EventName,datediff(minute,getdate(),EventDate) as MinutesRemaining
+from Events where EventName='Q4 Planning';
+
+select * from LogData;
+
+select UserID,dateadd(day,30,convert(datetime,EventTime,120)) from LogData;
+
+select UserID,cast(EventTime as date) from LogData
+where cast(EventTime as date)>cast('2025-11-01' as date);
+
+create view V_Expensive_FourWheeler
+as
+select Model,Price,Stock_left from FourWheeler
+where Price>5000000;
+
+select * from V_Expensive_FourWheeler;
+
+create view
+V_Combined_Vehicle_Names as
+select concat(Manufacturer,' ',Model) as VehicleIdentifier from TwoWheeler
+union all
+select concat(Brand,' ',Model) as VehicleIdentifier from FourWheeler;
+
+select * from V_Combined_Vehicle_Names;
+
+create view
+V_LowStock_Summary as
+select Manufacturer,count(Model) as ModelNumber from TwoWheeler
+where Stock_left<5 group by Manufacturer;
+
+select * from V_LowStock_Summary;
+
+select C.first_name,C.last_name,O.order_id,O.quantity from 
+Customers as C inner join Orders as O
+on C.customer_id=O.customer_id;
+
+select O.order_id,O.customer_id from Orders as O
+left join Payments as PY on O.order_id=PY.order_id
+where PY.payment_id is null;
+
+select PR.product_name,sum(amount) as RevenueGenerated 
+from Products as PR
+inner join Orders as O
+on PR.product_id=O.product_id
+inner join Payments as PY on O.order_id=PY.order_id
+group by PR.product_name;
+
+create table Projects(
+	ProjectID int primary key,
+	ProjectName varchar(50)
+);
+
+create table Tasks(
+	TaskID int primary key,
+	ProjectID int,
+	TaskDescription varchar(100),
+	foreign key (ProjectID) references Projects(ProjectID)
+);
+
+select * from Tasks;
+
+insert into Projects
+values
+(1,'Alpha');
+
+insert into Tasks
+values(101,1,'Design Phase');
+
+update Tasks
+set TaskDescription='Develpment Phase'
+where TaskID=101;
+
+delete from Tasks
+where TaskID=101;
+
+create table ProjectLogs(
+	LogID int primary key,
+	LogDate date
+);
+
+alter table ProjectLogs
+add Status varchar(20);
+
+truncate table ProjectLogs;
+
+insert into Projects
+values(2,'Beta');
+
+update Projects
+set ProjectName='Gamma'
+where ProjectID=2;
+
+delete from Projects
+where ProjectID=2;
+
+select Manufacturer,len(replace(Manufacturer,' ','')) as CleanLength from TwoWheeler;
+
+select Manufacturer,CHARINDEX('H',Manufacturer,1) as [Index] from TwoWheeler;
+
+select Manufacturer,
+concat(Manufacturer,replicate('#',15-len(Manufacturer))) as Paddedname
+from TwoWheeler;
+
+select cast(getdate() as time);
+select cast(getdate() as date);
+
+select convert(varchar(16),getdate(),108);
+
+select concat(upper(left(first_name,1)),'-',lower(last_name)) as CustomerCode from Customers;
+
+select EventName,case
+			when datediff(day,Eventdate,getdate())>0 then datediff(day,EventDate,getdate())
+			else 0
+			end as DaysElapsed
+from Events;
+
+select PR.product_name,Price from Products as PR
+left join Orders as O
+on PR.product_id=O.product_id
+where O.order_id is null;
+
+select C.first_name,C.last_name 
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+left join Payments as PY 
+on O.order_id=PY.order_id
+group by C.first_name,C.last_name 
+having count(PY.payment_id)=0;
+
+select category 
+from Products as PR
+inner join Orders as o
+on PR.product_id=O.product_id
+group by category
+having count(order_id)<2;
+
+select category,sum(
+					case when order_id is null then 1
+					else 0
+					end
+					) as [count]
+from Products as PR left join Orders as O
+on PR.product_id=O.product_id
+group by category
+having sum(
+			case when O.order_id is null then 1
+			else 0
+			end
+			)>0;
+
+select C.first_name,C.last_name
+from Customers as C inner join Orders as O
+on C.customer_id=O.customer_id
+inner join Payments as PY
+on O.order_id=PY.order_id
+where PY.payment_method='Credit Card';
+
+select PR.product_name,Price from Products as PR
+left join Orders as o
+on PR.product_id=O.product_id
+where O.order_id is null;
+
+select PR.product_name,PY.payment_method
+from Payments as PY left join Orders as O
+on PY.order_id=O.order_id
+left join Products as PR
+on O.product_id=PR.product_id;
+
+select product_name,category
+from Products;
+
+
+
