@@ -1,0 +1,505 @@
+-- I have created a new sql file in which i will be evaluating my sql
+--learning with 4 tables in a new database EvaluationDB
+
+create database EvaluationDB;
+
+use EvaluationDB;
+
+CREATE TABLE Students (
+    student_id INT IDENTITY(100,1) PRIMARY KEY,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    major VARCHAR(50) NOT NULL,
+    enrollment_date DATE NOT NULL
+);
+
+CREATE TABLE Courses (
+    course_id VARCHAR(10) PRIMARY KEY,
+    course_name VARCHAR(255) NOT NULL,
+    credits INT NOT NULL,
+    department VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE Enrollment (
+    enrollment_id INT IDENTITY(1000,1) PRIMARY KEY,
+    student_id INT NOT NULL,
+    course_id VARCHAR(10) NOT NULL,
+    enrollment_status VARCHAR(20) DEFAULT 'Active',
+    
+    FOREIGN KEY (student_id) REFERENCES Students(student_id),
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id)
+);
+
+CREATE TABLE Grades (
+    grade_id INT IDENTITY(5000,1) PRIMARY KEY,
+    enrollment_id INT NOT NULL,
+    score DECIMAL(4, 1), 
+    grade_letter VARCHAR(2),
+    
+    FOREIGN KEY (enrollment_id) REFERENCES Enrollment(enrollment_id)
+);
+
+INSERT INTO Students (first_name, last_name, major, enrollment_date) VALUES 
+('Alice', 'Johnson', 'Computer Science', '2023-09-01'),
+('Bob', 'Williams', 'History', '2023-09-01'),
+('Charlie', 'Brown', 'Engineering', '2023-01-15'),   
+('Dana', 'Davis', 'Computer Science', '2024-09-01'),  
+('Ethan', 'Miller', 'History', '2024-01-10');
+
+INSERT INTO Courses (course_id, course_name, credits, department) VALUES
+('CS101', 'Intro to Programming', 3, 'CS'),
+('HIST200', 'World History', 4, 'History'),
+('ENG301', 'Thermodynamics', 3, 'Engineering'),
+('MATH101', 'Calculus I', 4, 'Math'),
+('CS450', 'Database Systems', 3, 'CS');
+
+INSERT INTO Enrollment (student_id, course_id) VALUES
+(100, 'CS101'), 
+(100, 'MATH101'),
+(101, 'HIST200'),
+(101, 'CS101'),
+(102, 'ENG301'),
+(103, 'CS450'),
+(104, 'HIST200'), 
+(104, 'MATH101');
+
+INSERT INTO Grades (enrollment_id, score, grade_letter) VALUES
+(1000, 92.5, 'A'),
+(1001, 88.0, 'B+'),
+(1002, 75.0, 'C'),  
+(1004, 95.0, 'A'), 
+(1005, 82.0, 'B'), 
+(1007, 78.5, 'C+');
+
+select * from Students;
+select * from Courses;
+select * from Enrollment;
+select * from Grades;
+
+select S.first_name,S.last_name,G.Score
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Courses as C
+on E.course_id=C.course_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+where C.course_name='Intro to Programming';
+
+select department,avg(score) as Avg_score
+from Courses as C inner join Enrollment as E
+on C.course_id=E.course_id
+inner join Grades as G
+on G.enrollment_id=E.enrollment_id
+group by department;
+
+select first_name,last_name,upper(course_name) as Course
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Courses as C
+on E.course_id=C.course_id
+left join Grades as G
+on E.enrollment_id=G.enrollment_id
+where grade_id is null;
+
+select course_name,case
+                    when credits>=4 then 'Major Core'
+                    else 'Elective'
+                    end as Status
+from Courses;
+
+select datediff(month,enrollment_date,getdate()) Months_completed from Students where student_id=100;
+
+select first_name,last_name,sum(credits) as TotalCredits
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Courses as C
+on E.course_id=C.course_id
+group by first_name,last_name;
+
+select major,count(E.student_id) as StudentCount
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+where enrollment_status='Active'
+group by major;
+
+select course_name,avg(score) as Avg_score 
+from Courses as C inner join Enrollment as E 
+on C.course_id=E.course_id
+inner join Grades as G 
+on E.enrollment_id=G.enrollment_id
+group by course_name
+having avg(score)<80;
+
+select first_name,last_name
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+left join Grades as G
+on E.enrollment_id=G.enrollment_id
+where G.grade_id is null;
+
+select course_name,department
+from Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+where student_id is null;
+
+insert into Courses
+values
+('PHIL400','Advanced Philosophy',3,'Philosophy');
+
+select major,sum(
+                case when G.grade_id is null then 1
+                else 0
+                end) as [Enrollments Missing Grades]
+from Students as S left join Enrollment as E
+on S.student_id=E.student_id
+left join Grades as G on
+E.enrollment_id=G.enrollment_id
+group by major;
+
+select first_name,last_name,concat(left(first_name,1),upper(last_name),len(concat(first_name,last_name))+1) as StudentIDCode
+from Students;
+
+select first_name,concat(left(last_name,1),replicate('*',len(last_name)-2),right(last_name,1)) as MaskedName from Students;
+
+insert into Students
+values('Mary Ann','Wilson','Arts','2024-10-28');
+
+select first_name,last_name from Students;
+
+select * from Students;
+
+select first_name,last_name,
+charindex(' ',first_name) as Space_at_position
+from Students
+where first_name like '% %';
+
+select major,avg(score) as avg_score
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+group by major
+having avg(score)>85
+order by avg(score) desc;
+
+select top 2 first_name,score
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+order by score desc;
+
+select first_name,score 
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+order by score desc
+offset 2 rows;
+
+select * from Students
+order by student_id desc
+offset 2 rows
+fetch next 3 rows only;
+
+select top 3 * from Students
+order by student_id desc;
+
+
+select first_name,last_name
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+group by first_name,last_name
+having count(enrollment_id)>1;
+
+select course_name,max(score) as MAx_score
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G
+on G.enrollment_id=E.enrollment_id
+inner join Courses as C
+on E.course_id=C.course_id
+where major='Computer Science'
+group by course_name;
+
+select course_name from
+Courses as C inner join Enrollment as E
+on C.course_id=E.course_id
+left join Grades as G on
+G.enrollment_id=E.enrollment_id
+group by course_name
+having count(grade_id)=0;
+
+select course_name from
+Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+left join Grades as G on
+G.enrollment_id=E.enrollment_id
+group by course_name
+having count(grade_id)=0;
+
+select first_name as EntityName,'Student' as EntityType from Students
+union all
+select course_name ,'Course' from Courses;
+
+select distinct major from Students
+union
+select department from Courses;
+
+select cast(score as int) from Grades
+union all
+select cast(credits as int) from Courses;
+
+select first_name,last_name,avg(score) as Avg_score,case
+    when avg(score)>85 then 'High Honors'
+    when avg(score)<75 then 'Review'
+    else 'Satisfactory'
+    end as ScoreStatus
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+group by first_name,last_name;
+
+select department,count(distinct student_id) as [No of Students],
+concat(upper(left(department,3)),year(getdate())) as SubjectCode
+from Courses as C inner join Enrollment as E
+on C.course_id=E.course_id
+where department='cs'
+group by department;
+
+select sum(credits) as TotalCredits,max(credits) as MaxCredits from Courses;
+
+select S.student_id,abs(score-85) as AbsDiff 
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G on
+E.enrollment_id=G.enrollment_id;
+
+select round(avg(score),0) as Avg_rounded_score from Grades;
+
+select ceiling(avg(score)) as RoundedUP from Grades;
+
+select course_name,sqrt(credits) as CreditRoot from Courses;
+
+select student_id,power(score,2) as ScoreSquared from 
+Enrollment as E inner join Grades as G
+on E.enrollment_id=G.enrollment_id;
+
+select grade_letter,log(score) as ScoreLog from Grades;
+
+select course_name,exp(credits) as CreditExponential from Courses;
+
+select grade_letter,cast(round(score,1) as varchar(10)) from Grades;
+use EvaluationDB;
+
+select avg(cast(score as decimal(5,2))) as AvgScoreForAGrade from Grades
+where grade_letter='A';
+
+use PracticeDB;
+
+select Model,Price,Stock_left
+from V_Expensive_FourWheeler
+where Price>8000000 or Model like '%r%';
+
+select * from Appointments
+where year(StartTime)=2025 and (datepart(month,StartTime) between 10 and 12);
+
+use EvaluationDB;
+
+alter table Students
+add email varchar(50);
+
+exec sp_rename 'Courses.department','dept_name','column';
+
+insert into Students(first_name,last_name,major,enrollment_date)
+values
+('Fiona','Clark','Enginnering','2024-09-10');
+
+update Students
+set major='Data Science' where first_name='Dana' and last_name='Davis';
+
+delete from Students
+where first_name='Ethan';
+
+select S.first_name,C.course_name,G.score
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Courses as C on
+E.course_id=C.course_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id;
+
+select S.first_name,S.last_name,C.course_name
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Courses as C
+on E.course_id=C.course_id
+left join Grades as G
+on E.enrollment_id=G.enrollment_id
+where G.grade_id is null;
+
+select C.course_name
+from Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+where E.enrollment_id is null;
+
+select C.course_name,count(student_id) as [No of students Enrolled]
+from Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+group by C.course_name;
+
+select course_name,avg(score) as AVg_score from 
+Courses as C inner join Enrollment as E
+on C.course_id=E.course_id
+inner join Grades as G
+on E.enrollment_id=G.enrollment_id
+group by course_name;
+
+select S.first_name,S.last_name
+from Students as S left join Enrollment as E
+on S.student_id=E.student_id
+where E.enrollment_id is null;
+
+select S.first_name,S.last_name
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+left join Grades as G
+on E.enrollment_id=G.enrollment_id
+where G.grade_id is null;
+
+select S.first_name,S.last_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end
+as GradeStatus
+from Students as S left join Enrollment as E
+on S.student_id=E.student_id
+left join Grades as G on
+E.enrollment_id=G.enrollment_id;
+
+select C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end
+as GradeStatus,
+count(*) as StudentCount
+from Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+left join Grades as G on E.enrollment_id=G.enrollment_id
+group by C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end;
+
+select C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    end as GradeCategory,
+count(*) as StudentCount
+from Courses as C inner join Enrollment as E
+on C.course_id=E.course_id
+inner join Grades as G on E.enrollment_id=G.enrollment_id
+group by C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    end;
+
+select C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end
+as GradeStatus,
+count(*) as StudentCount
+from Courses as C left join Enrollment as E
+on C.course_id=E.course_id
+left join Grades as G
+on E.enrollment_id=G.enrollment_id
+where (case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end
+) in ('Good','Excellent')
+group by C.course_name,
+case
+    when G.score>=90 then 'Excellent'
+    when G.score between 75 and 89 then 'Good'
+    when G.score between 50 and 74 then 'Average'
+    when G.score<50 then 'Poor'
+    when G.grade_id is null then 'Not Graded Yet'
+    end
+having count(*)>1;
+
+select G.grade_id,G.grade_letter
+from Grades as G
+left join Enrollment as E
+on G.enrollment_id=E.enrollment_id
+where E.enrollment_id is null;
+
+select upper(concat(first_name,' ',last_name)) as UpperCaseName,len(upper(concat(first_name,' ',last_name))) as [Length]
+from Students;
+
+select enrollment_id,score,round(score,0),sqrt(score) from Grades;
+
+select upper(concat(trim(first_name),' ',trim(last_name))),len(upper(concat(trim(first_name),' ',trim(last_name)))) as [Length] from Students;
+
+select first_name,last_name
+from Students
+where
+(major in ('Computer Science','Engineering')) and
+(enrollment_date between '2023-01-01' and '2023-12-31') and
+(first_name like 'A%' or first_name like 'C%');
+
+select concat('Name:',first_name,' ',last_name),concat('Enrolled on:',convert(varchar(10),enrollment_date,23)) as EnrolledDate,
+concat('Student ID:',cast(student_id as char(10))) from Students;
+
+create view vw_StudentCoursePerformance as
+select concat(first_name,' ',last_name) as StudentName,
+C.course_name,G.score,G.grade_letter
+from Students as S inner join Enrollment as E
+on S.student_id=E.student_id
+inner join Grades as G on 
+E.enrollment_id=G.enrollment_id
+inner join Courses as C
+on E.course_id=C.course_id;
+
+select * from vw_StudentCoursePerformance;
+
+create view vw_studentContact as
+select student_id,first_name,last_name,email
+from Students;
+
+select * from vw_studentContact;
+
+update  vw_studentContact
+set email='alice.johnson@email.com'
+where student_id=100;
+
+select * from Students;
+
+select first_name,last_name,enrollment_date
+from Students
+order by enrollment_date desc
+offset 2 rows
+fetch next 2 rows only;
