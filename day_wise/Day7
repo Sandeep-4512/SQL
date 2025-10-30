@@ -1,0 +1,310 @@
+use PracticeDB;
+
+CREATE TABLE SalesDemo (
+    SaleID INT PRIMARY KEY,
+    EmployeeName VARCHAR(50),
+    Region VARCHAR(50),
+    SaleAmount DECIMAL(10,2),
+    SaleDate DATE
+);
+
+INSERT INTO SalesDemo (SaleID, EmployeeName, Region, SaleAmount, SaleDate)
+VALUES
+(1, 'Alice', 'North', 5000.00, '2024-01-05'),
+(2, 'Bob', 'South', 7000.00, '2024-01-07'),
+(3, 'Charlie', 'North', 6500.00, '2024-02-10'),
+(4, 'Alice', 'North', 4000.00, '2024-03-12'),
+(5, 'Bob', 'South', 9000.00, '2024-03-15'),
+(6, 'David', 'East', 3000.00, '2024-04-01'),
+(7, 'Alice', 'North', 5500.00, '2024-05-09'),
+(8, 'Charlie', 'North', 7200.00, '2024-05-18'),
+(9, 'Bob', 'South', 6000.00, '2024-06-02'),
+(10, 'David', 'East', 4800.00, '2024-06-15');
+
+select * from SalesDemo;
+
+select EmployeeName,Region,SaleAmount,
+row_number() over(partition by Region order by SaleAmount desc)
+as RowNum from SalesDemo
+order by SaleAmount desc;
+
+CREATE TABLE EmployeePerformance (
+    EmpID INT IDENTITY(1,1) PRIMARY KEY,
+    EmpName VARCHAR(50),
+    Department VARCHAR(50),
+    Month VARCHAR(20),
+    PerformanceScore INT
+);
+
+INSERT INTO EmployeePerformance (EmpName, Department, Month, PerformanceScore) VALUES
+('Alice', 'HR', 'January', 88),
+('Bob', 'HR', 'January', 91),
+('Charlie', 'HR', 'February', 91),
+('David', 'IT', 'January', 77),
+('Emma', 'IT', 'January', 82),
+('Frank', 'IT', 'February', 77),
+('Grace', 'Finance', 'January', 93),
+('Hannah', 'Finance', 'February', 88),
+('Ian', 'Finance', 'February', 93),
+('Jack', 'Finance', 'March', 91);
+
+CREATE TABLE ProductSales (
+    SaleID INT IDENTITY(1,1) PRIMARY KEY,
+    Product VARCHAR(50),
+    Region VARCHAR(50),
+    SaleDate DATE,
+    UnitsSold INT,
+    Revenue DECIMAL(10,2)
+);
+
+INSERT INTO ProductSales (Product, Region, SaleDate, UnitsSold, Revenue) VALUES
+('Laptop', 'North', '2025-01-01', 10, 85000),
+('Laptop', 'North', '2025-01-02', 7, 59500),
+('Laptop', 'South', '2025-01-01', 12, 102000),
+('Phone', 'North', '2025-01-01', 20, 40000),
+('Phone', 'South', '2025-01-02', 25, 50000),
+('Tablet', 'North', '2025-01-03', 8, 32000),
+('Tablet', 'South', '2025-01-03', 6, 24000),
+('Laptop', 'East', '2025-01-01', 9, 76500),
+('Phone', 'East', '2025-01-01', 18, 36000),
+('Tablet', 'East', '2025-01-02', 10, 40000);
+
+select EmpName,Department,PerformanceScore,
+row_number() over (partition by PerformanceScore order by PerformanceScore desc) as RowNum
+from EmployeePerformance;
+
+SELECT *
+FROM (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY Region ORDER BY SaleAmount DESC) AS RowNum
+  FROM SalesDemo
+) q
+WHERE RowNum <= 2
+
+select Product,Region,Revenue,
+row_number() over (partition by Region order by Revenue desc) as RowNum
+from ProductSales;
+
+select EmpName,Department,Month,PerformanceScore ,
+row_number() over (partition By Department,Month order by PerformanceScore desc)
+as RowNum
+from EmployeePerformance;
+
+select * from EmployeePerformance;
+
+select EmpID,EmpName,Month,PerformanceScore,
+avg(PerformanceScore) over (partition by Month ) as Avg_salary
+from EmployeePerformance;
+
+select * from ProductSales;
+
+select Region,Product,
+avg(Revenue) over (partition by Region,Product) as Avg_revenue
+from ProductSales;
+
+select Product,Region,
+avg(Revenue) over (partition by Product,Region) as Avg_revenue
+from ProductSales;
+
+select *,
+sum(Revenue) over (partition by Region,Product) as SumOfSales
+from ProductSales;
+
+select SaleID,Region,SaleAmount,
+sum(SaleAmount) over(partition by Region) as Total_sales
+from SalesDemo;
+
+select Product,Region,Revenue,
+avg(Revenue) over (partition by Region) as Avg_revenue
+from ProductSales;
+
+select EmpName,Department,Month,PerformanceScore,
+max(PerformanceScore) over (partition by Department) as HighestPerformnace
+from EmployeePerformance;
+
+select EmployeeName,SaleAmount,SaleDate,
+sum(SaleAmount) over (partition by EmployeeName order by SaleDate) as runningTotal
+from SalesDemo;
+
+select * from SalesDemo;
+
+select * from ProductSales;
+
+select SaleID,Product,UnitsSold,
+min(UnitsSold) over (partition by Product) as minUnits
+from ProductSales;
+
+select Product,min(UnitsSold) as MinSoldUnits
+from ProductSales group by Product;
+
+create table SalesMaster(
+    SaleID int primary key,
+    ProductID int,
+    ProductName varchar(50),
+    EmployeeID int,
+    EmployeeName varchar(50),
+    Region varchar(50),
+    SaleAmount decimal(10,2),
+    UnitsSold int,
+    SaleDate date,
+    CustomerID int);
+
+INSERT INTO SalesMaster (SaleID, ProductID, ProductName, EmployeeID, EmployeeName, Region, SaleAmount, UnitsSold, SaleDate, CustomerID) VALUES
+(1, 1001, 'Phone',   2001, 'Alice',   'North', 5000.00, 10, '2025-01-01', 3001),
+(2, 1002, 'Laptop',  2002, 'Bob',     'South', 7000.00, 7,  '2025-01-02', 3002),
+(3, 1001, 'Phone',   2003, 'Charlie', 'North', 6500.00, 12, '2025-01-03', 3003),
+(4, 1003, 'Tablet',  2001, 'Alice',   'East',  4000.00, 8,  '2025-01-04', 3004),
+(5, 1002, 'Laptop',  2002, 'Bob',     'South', 9000.00, 6,  '2025-01-05', 3005),
+(6, 1003, 'Tablet',  2004, 'David',   'East',  3000.00, 5,  '2025-01-06', 3006),
+(7, 1001, 'Phone',   2001, 'Alice',   'North', 5500.00, 9,  '2025-01-07', 3007),
+(8, 1002, 'Laptop',  2003, 'Charlie', 'North', 7200.00, 11, '2025-01-08', 3008),
+(9, 1002, 'Laptop',  2002, 'Bob',     'South', 6000.00, 4,  '2025-01-09', 3009),
+(10,1004, 'Monitor', 2004, 'David',   'East',  4800.00, 6,  '2025-01-10', 3010);
+
+select * from (
+        select EmployeeName,SaleAmount,Region,
+        sum(SaleAmount) over (partition by Region) as RegionSales,
+        row_number() over (partition by Region order by SaleAmount desc) as RowNum
+        from SalesMaster) x
+where RowNum=1;
+
+select Region,max(SaleAmount) from SalesMaster
+group by Region;
+
+select e.*,
+ROW_NUMBER() over (PARTITION BY Region order by SaleAmount)
+from SalesMaster e;
+
+select SaleID,Region,SaleAmount,
+row_number() over( partition by region order by SaleAmount desc) as RowNum
+from SalesMaster;
+
+select SaleID,Region,SaleAmount,
+rank() over (partition by Region order by SaleAmount desc) as Rnk
+from SalesMaster;
+
+select SaleID,Region,SaleAmount,
+dense_rank() over (partition by Region order by SaleAmount desc) as DNSRnk
+from SalesMaster;
+
+select SaleID,ProductID,SaleDate,SaleAmount,
+lead(SaleAmount,1,0) over (partition by ProductID order by SaleDate) as NextSaleAmount
+from SalesMaster;
+
+select SaleID,EmployeeID,SaleDate,SaleAmount,
+lag(SaleAmount,1,0) over (partition by EmployeeID order by SaleDate) as PreviousSaleAmount
+from SalesMaster;
+
+select SaleID,Region,SaleAmount,
+row_number() over (partition by region order by SaleAmount desc) as RowNum,
+case
+    when row_number() over (partition by region order by SaleAmount desc)=1 then 'Top Sale'
+    else 'Other Sale'
+    end as Flag
+from SalesMaster;
+
+select * from SalesMaster;
+
+select *,
+row_number() over (partition by Region order by SaleAmount desc) as RowNum,
+rank() over (partition by Region order by SaleAmount desc) as Rnk,
+dense_rank() over (partition by Region order by SaleAmount desc) as DnsRnk,
+lag(SaleAmount) over (partition by EmployeeID order by SaleDate) as PreviousSaleAmount,
+lead(SaleAmount) over (partition by ProductID order by SaleDate) as NextSaleAmount,
+count(SaleID) over (partition by Region) as TotalSales,
+avg(SaleAmount) over (partition by Region) as AvgSales,
+case 
+    when row_number() over (partition by Region order by SaleAmount desc)=1 then 'Top Sales'
+    else 'Other Sales'
+    end as SalesFlag,
+case 
+    when SaleAmount>avg(SaleAmount) over (partition by Region) then 'Above Avg'
+    else 'Below Avg'
+    end as RegionAvgSalesFlag
+from SalesMaster;
+
+select * from(select SaleID,Region,SaleAmount,
+row_number() over (partition by Region order by SaleAmount desc) as RowNum
+from SalesMaster) x
+where x.RowNum<=3;
+
+select * from (select SaleID,Region,SaleDate,SaleAmount,
+avg(SaleAmount) over (partition by region) as AvgRegionSales
+from SalesMaster) x
+where SaleAmount>x.AvgRegionSales;
+
+select EmployeeID,SaleID,SaleDate,SaleAmount,
+lag(SaleAmount) over (partition by EmployeeID order by SaleDate) as PreviousSaleAmount
+from SalesMaster;
+
+select ProductID,SaleAmount,
+min(SaleDate) over (partition by ProductID) as FirstSaleDate,
+max(SaleDate) over (partition by ProductID) as LastSaleDate
+from SalesMaster;
+
+select x.*,(FirstSaleAmount-LastSaleAmount) as [Growth/Decline] from (select ProductID,ProductName,
+min(SaleDate) over (partition by ProductID) as FirstSaleDate,
+first_value(SaleAmount) over (partition by ProductID order by SaleDate) as FirstSaleAmount,
+first_value(SaleDate) over (partition by ProductID order by SaleDate desc) as LastSaleDate,
+first_value(SaleAmount) over (partition by ProductID order by SaleDate desc) as LastSaleAmount,
+row_number() over (partition by ProductID order by SaleID) as RN 
+from SalesMaster) x
+where x.RN=1;
+
+select ProductID,ProductName,
+min(SaleDate) as FirstSaleDate,
+max(SaleDate) as LastSaleDate
+from SalesMaster
+group by ProductID,ProductName;
+
+select ProductID,SaleAmount,
+row_number() over (partition by ProductID order by SaleDate) as RN1,
+row_number() over (partition by ProductID order by SaleDate desc) as RN2
+from SalesMaster;
+
+select * from SalesMaster
+where ProductID=1001;
+
+select EmpID,EmpName,Department,PerformanceScore,
+row_number() over (partition by Department order by PerformanceScore desc) as Rn,
+rank() over (partition by Department order by PerformanceScore desc) as Rnk,
+dense_rank() over (partition by Department order by PerformanceScore desc) as DnsRnk
+from EmployeePerformance;
+
+select * from (select EmpID,EmpName,Department,PerformanceScore,
+rank() over (partition by Department order by PerformanceScore desc) as Rnk
+from EmployeePerformance) x 
+where x.Rnk<3;
+
+select EmpID,EmpName,Department,PerformanceScore,
+row_number() over (partition by Department order by PerformanceScore desc) as EmplRanking
+from EmployeePerformance;
+
+select * from SalesMaster;
+
+select EmployeeID,EmployeeName,Region,SaleAmount,
+lag(SaleAmount) over (partition by Region order by SaleDate) as PreviousSaleAmount,
+(SaleAmount-lag(SaleAmount) over (partition by Region order by SaleDate)) as SalesAmountDiff
+from SalesMaster;
+
+select EmployeeID,EmployeeName,Region,SaleAmount,
+lead(SaleAmount) over (partition by Region order by SaleDate) as NextSaleAmount,
+sum(SaleAmount) over (partition by Region order by SaleDate) as RunningTotal
+from SalesMaster;
+
+select SaleID,SaleDate,SaleAmount,Region,
+sum(SaleAmount) over (partition by Region) as TotalSalesByRegion,
+case
+    when SaleAmount>avg(SaleAmount) over (partition by Region) then 'Above Average'
+    else 'Below Average'
+    end
+as PerformanceCategory
+from SalesMaster;
+
+select SaleID,SaleDate,Region,SaleAmount,
+first_value(SaleAmount) over (partition by Region order by SaleAmount desc) as HighestAmount
+from SalesMaster;
+
+
+
+
+
