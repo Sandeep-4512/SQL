@@ -332,7 +332,7 @@ where
     X.Rnk<=3;
 
 --3.Find the top 3 products, along with their category and brand names, where the delay between the placement of the order and dispatch is the maximum.
--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
 select top 3 
     P.product_id,P.product_name,CG.category_name,B.brand_name,
