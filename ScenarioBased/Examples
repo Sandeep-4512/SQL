@@ -6,13 +6,9 @@ use BikeStorePracticeDB;
 select 
     C.customer_id,C.first_name,C.last_name
 from 
-    sales.customers C
-    join sales.orders O
-    on C.customer_id=O.customer_id
-    join sales.order_items OI
-    on O.order_id=OI.order_id
-    join production.products P
-    on OI.product_id=P.product_id
+    sales.customers C join sales.orders O on C.customer_id=O.customer_id
+    join sales.order_items OI on O.order_id=OI.order_id
+    join production.products P on OI.product_id=P.product_id
 where 
     O.order_date>=dateadd(month,-6,(select max(order_date) from sales.orders))
 group by 
@@ -298,15 +294,55 @@ order by
 --------------------------------------------------------------------------------------------------------------------------
 --1.Find the top 3 highest revenue-generating stores over time using cumulative revenue.
 ----------------------------------------------------------------------------------------------------------------------------
---select 
---    ST.store_id,ST.store_name,
---    sum(OI.quantity*OI.list_price) over (partition by O.order_date) as CumulativeRevenue
---from
---    sales.stores ST join sales.orders O on
---    ST.store_id=O.store_id join sales.order_items OI on
---    O.order_id=OI.order_id
---group by
---     ST.store_id,ST.store_name
+use BikeStorePracticeDB;
+--first calculate daily store revenue
+with StoreDailyRevenue as (
+    select
+        ST.store_id,ST.store_name,O.order_date,
+        sum(OI.quantity*OI.list_price) as DailyRevenue
+    from
+        sales.stores ST join sales.orders O on ST.store_id=O.store_id
+        join sales.order_items OI on O.order_id=OI.order_id
+    group by ST.store_id,ST.store_name,O.order_date
+),
+--then calculate cumulative revenue by order_date
+CumulativeStoreRevenueTable as(
+    select
+        *,
+        sum(DailyRevenue) over (partition by store_id order by order_date) as CumulativeStoreRevenue
+    from
+        StoreDailyRevenue
+),
+--then find max cumulative revenue and find out the rank by max cumulative revenue
+StoreRank as (
+    select store_id,store_name,
+    max(CumulativeStoreRevenue) as maxCumRevenue,
+    rank() over (order by max(CumulativeStoreRevenue) desc) as Rnk
+    from
+        CumulativeStoreRevenueTable
+    group by
+        store_id,store_name
+)
+--select top 3 ranked stores
+select * from StoreRank
+where Rnk<=3;
+
+------------------------------------------------------------------alternate way--------------------------
+select *  from (
+    select 
+        X.store_id,X.store_name,max(X.cumReve) as MaxCumRev,
+        rank() over (order by max(X.cumReve) desc) as Rnk
+    from(
+            select 
+                ST.store_id,ST.store_name,O.order_date,
+                sum(OI.quantity*OI.list_price) over (partition by ST.store_id order by O.order_date ) as cumReve
+            from 
+                sales.stores ST join sales.orders O on ST.store_id=O.store_id join sales.order_items OI on O.order_id=OI.order_id
+        ) X
+     group by 
+        X.store_id,X.store_name
+        ) Y
+where Y.Rnk<=3;
 
 
 --2.Identify the top 3 best-selling products in each store (Concepts: RANK() or DENSE_RANK()).
@@ -332,7 +368,7 @@ where
     X.Rnk<=3;
 
 --3.Find the top 3 products, along with their category and brand names, where the delay between the placement of the order and dispatch is the maximum.
-------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
 select top 3 
     P.product_id,P.product_name,CG.category_name,B.brand_name,
@@ -388,26 +424,42 @@ with X as (
     group by 
         ST.store_id,O.order_date,ST.store_name
 )
-select 
-    X.store_id,X.store_name,X.order_date,X.DailySales,
-    lag(X.DailySales) over (partition by X.store_id order by X.order_date) as PreviousDaySales,
+select * from (select 
+    X.store_id,X.store_name,X.order_date,
+    lag(X.DailySales) over (partition by X.store_id order by X.order_date) as PreviousDaySales,X.DailySales,
     lead(X.DailySales) over (partition by X.store_id order by X.order_date) as NextDaySales,
-    (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date)) as SalesDifference
+    (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date)) as SalesDifference,
+    case
+        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))<0 then 'Decreased Sales'
+        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))=0 then 'No change'
+        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))>0 then 'Increased Sales'
+        else 'No previous Sales'
+    end as GrowthImpact
 from 
-    X;
+    X) Y
+--where GrowthImpact='Decreased Sales';
+GO
 
 --7.Understand datefunctions , group by , count and use window functions / cte to handle year-over-year analysis
 --------------------------------------------------------------------------------------------
 use sakila;
-select 
-    A.actor_id,A.first_name,A.last_name,F.release_year,
-    count(F.film_id) as FilmCount
-    --avg(count(F.film_id)) as AvgYearlyReleases
-from 
-    actor A join film_actor FA on A.actor_id=FA.actor_id
-    join film F on FA.film_id=F.film_id
-group by 
-    A.actor_id,A.first_name,A.last_name,F.release_year;
+--firstly find out yearly total of each actor
+with YearlyTotal as (
+    select 
+        A.actor_id,A.first_name,A.last_name,F.release_year,
+        count(F.film_id) as FilmCount
+    from 
+        actor A join film_actor FA on A.actor_id=FA.actor_id
+        join film F on FA.film_id=F.film_id
+    group by 
+        A.actor_id,A.first_name,A.last_name,F.release_year
+        )
+--from yearly totals,calculate the average yearly film count of each actor
+select
+    actor_id,first_name,last_name,FilmCount,
+    avg(FilmCount) over (partition by actor_id) as AvgFilmCount
+from
+    YearlyTotal;
 
 
 --8.Find stores that have sales on all days of the week
@@ -514,7 +566,260 @@ with Y as (
     group by 
         ST.store_id,St.store_name,datename(month,O.order_date)
     )
-select * from Y where Y.Rnk<=3;    
+select * from Y where Y.Rnk<=3;
+
+
+--14.Find customers who have rented every film in a specific category.
+----------------------------------------------------------------------
+use sakila;
+--firstly select customer_id and no of distinct films each customer has rented in each category
+with CustomerCategoryRentals as(
+    select 
+        C.customer_id,C.first_name,C.last_name,
+        fc.category_id,CG.name as Category,
+        count(distinct fc.category_id) as NoOfFilms
+    from
+        customer C join rental R on C.customer_id=R.customer_id 
+        join inventory I on I.inventory_id=R.inventory_id 
+        join film F on F.film_id=I.film_id 
+        join film_category fc on F.film_id=fc.film_id 
+        join category CG on fc.category_id=CG.category_id
+    group by
+        C.customer_id,C.first_name,C.last_name,fc.category_id,CG.name
+),
+--Then calculate no of distinct films in each category
+NoOFFilmsInCategory as (
+    select 
+        fc.category_id,count(distinct film_id) as TotalFilms
+    from
+        film_category fc
+    group by
+        fc.category_id
+)
+--finally select customer details and category details by joining both CTEs , apply condition as whether total films a customer has rented equals total films in that category
+select 
+    CCR.customer_id,CCR.first_name,CCR.last_name,CCR.category_id,CCR.Category
+from
+    CustomerCategoryRentals CCR join
+    NoOFFilmsInCategory X on CCR.category_id=X.category_id
+where
+    CCR.NoOfFilms=X.TotalFilms
+order by
+    CCR.customer_id;
+
+
+-------------------------------------------------------SET 3--------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------
+--1.Find the names of customers who have placed more orders than the average number of orders per customer.
+---------------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select 
+    C.customer_id,C.first_name,C.last_name 
+from
+    sales.customers C join sales.orders O on C.customer_id=O.customer_id
+group by 
+    C.customer_id,C.first_name,C.last_name
+having 
+    count(O.order_id)>(select count(order_id)/count(distinct C1.customer_id) from sales.customers C1 join sales.orders O1 on O1.customer_id=C1.customer_id);
+
+
+--2.List products that have never been ordered
+--------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select 
+    P.product_id,P.product_name
+from
+    production.products P left join sales.order_items OI on P.product_id=OI.product_id
+where 
+    OI.order_id is null;
+
+
+--3.Find the store that generated the highest total revenue.
+-------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select TOP 1
+    ST.store_id,ST.store_name,sum(OI.quantity*OI.list_price) as TotalSales
+from
+    sales.stores ST join sales.orders O on ST.store_id=O.store_id
+    join sales.order_items OI on O.order_id=OI.order_id
+group by
+    ST.store_id,ST.store_name
+order by 
+    sum(OI.quantity*OI.list_price) desc;
+
+
+--4.Show the top 5 products with the highest sales quantity, but only include those from brands whose total sales are above the average sales per brand.
+------------------------------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select TOP 5
+    P.product_id,P.product_name,sum(OI.quantity*OI.list_price) as TotalSales
+from
+    sales.order_items OI join production.products P on OI.product_id=P.product_id
+    join production.brands B on P.brand_id=B.brand_id
+where
+    B.brand_id in -----only include those from brands whose total sales are above the average sales per brand.
+    (--select brand id where total sales greater than average sales per brand
+        select 
+            B.brand_id 
+        from 
+            sales.order_items OI join production.products P on OI.product_id=P.product_id
+            join production.brands B on P.brand_id=B.brand_id 
+        group by 
+            B.brand_id
+        having 
+            sum(OI.quantity*OI.list_price)> ----total sales>avg brand sales
+            (--select avg sales per brand
+                select 
+                    sum(OI.quantity*OI.list_price)/count(distinct B.brand_id) 
+                from 
+                    sales.order_items OI join production.products P 
+                    on OI.product_id=P.product_id join production.brands B 
+                    on P.brand_id=B.brand_id
+                )
+    )
+group by
+    P.product_id,P.product_name
+order by
+    TotalSales desc;
+
+
+--5.Find customers who bought all products in a specific category (e.g., 'Mountain Bikes').
+use BikeStorePracticeDB;
+select 
+    C.customer_id,C.first_name,C.last_name
+from
+    sales.customers C join sales.orders O on C.customer_id=O.customer_id
+    join sales.order_items OI on O.order_id=OI.order_id join 
+    production.products P on OI.product_id=P.product_id
+    join production.categories CG on P.category_id=CG.category_id
+where 
+    CG.category_name='Mountain Bikes'
+group by
+    C.customer_id,C.first_name,C.last_name
+having--compare the no of purchased products to total no of products
+    count(distinct P.product_id)=(--find no of products in selected category
+                                   select 
+                                       count(distinct products.product_id) 
+                                   from 
+                                       production.categories join production.products on 
+                                       products.category_id=categories.category_id 
+                                   where 
+                                       category_name='Mountain Bikes'
+                                  );
+
+
+--6.List the names of staff who have handled orders totaling more than the store manager’s orders in the same store.
+--------------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+with StaffRevenue as (
+    select
+        S.staff_id,
+        S.store_id,
+        sum(OI.quantity * OI.list_price * (1 - OI.discount)) as total_staff_revenue
+    from
+        sales.staffs as S join sales.orders as O on S.staff_id = O.staff_id
+        join sales.order_items as OI on O.order_id = OI.order_id
+    group by
+        S.staff_id,
+        S.store_id
+),
+ManagerRevenue as (
+    select
+        S.store_id,
+        S.manager_id as manager_staff_id,
+        SR.total_staff_revenue as total_manager_revenue
+    from
+        sales.staffs as S join StaffRevenue as SR 
+        on S.manager_id = SR.staff_id and S.store_id = SR.store_id          
+    group by
+        S.store_id,
+        S.manager_id,
+        SR.total_staff_revenue
+)
+select
+    S.first_name,S.last_name,SRV.total_staff_revenue,MRV.total_manager_revenue,ST.store_name
+from
+    sales.staffs as S join StaffRevenue as SRV on S.staff_id = SRV.staff_id
+    join ManagerRevenue as MRV on S.store_id = MRV.store_id join 
+    sales.stores as ST on S.store_id = ST.store_id
+where
+    S.staff_id <> MRV.manager_staff_id
+    AND SRV.total_staff_revenue > MRV.total_manager_revenue
+order by
+    ST.store_name,
+    SRV.total_staff_revenue desc;
+
+
+
+--7.Show the product with the second highest revenue
+--------------------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select 
+    P.product_id,P.product_name,sum(OI.quantity*OI.list_price) as TotalSales
+from
+    sales.order_items OI join production.products P
+    on P.product_id=OI.product_id
+group by
+    P.product_id,P.product_name
+order by
+    TotalSales desc
+offset 1 rows
+fetch next 1 rows only;
+
+
+--8.List customers whose total order amount is higher than every customer in a specific store (e.g., store_id = 3).
+-------------------------------------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select TOP 1
+    C.customer_id,C.first_name,C.last_name,sum(OI.quantity*OI.list_price) as TotalSales
+from 
+    sales.customers c join sales.orders O on O.customer_id=C.customer_id
+    join sales.stores ST on O.store_id=ST.store_id join sales.order_items OI
+    on O.order_id=OI.order_id
+where
+    ST.store_id=3
+group by
+    C.customer_id,C.first_name,C.last_name
+order by 
+    TotalSales desc;
+
+
+--9.Find the brand(s) whose cheapest product is more expensive than the most expensive product of another brand.
+--------------------------------------------------------------------------------------------
+--use BikeStorePracticeDB;
+--with BrandedPrices as(
+--select 
+--    B.brand_id,B.brand_name,
+--    min(P.list_price) as MinimumPriced,
+--    max(P.list_price) as MaxPriced
+--from
+--    production.products P join production.brands B 
+--    on P.brand_id=B.brand_id
+--group by
+--    B.brand_id,B.brand_name
+--)
+
+
+        
+
+
+--10.Identify stores where no staff member has processed an order in the last 6 months.
+----------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select
+    ST.store_id,ST.store_name
+from
+    sales.stores ST
+where
+    ST.store_id not in(--extract the store ids where orders are processed in last 6 months
+                    select 
+                        O.store_id
+                    from
+                        sales.orders O
+                    where
+                        O.order_date>=dateadd(month,-6,(select max(order_date) from sales.orders))
+                    );
+
 
 
 
