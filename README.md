@@ -18,6 +18,12 @@ Apply real-life scenarios including database normalization and data warehousing 
 
 /notes/ – Concept explanations, error troubleshooting, and interview questions
 
+/ScenarioBased/- Example queries based on BikeStore database and sakila database which cover all of the major functions in SQL
+
+You can refer below Databases for working with those queries:
+**Bikestore database** - https://github.com/ShaidHasanShuvo/Bike_Stores
+**Sakila**- https://github.com/jOOQ/sakila
+
 🚀 Learning Plan
 1. SQL Basics & Database Fundamentals
 
