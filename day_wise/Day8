@@ -1,0 +1,278 @@
+use PracticeDB;
+
+select * from SalesMaster;
+
+select * from (select SaleID,EmployeeID,SaleAmount,SaleDate,
+first_value(SaleDate) over (partition by EmployeeID order by SaleDate) as FirstSaleDate,
+row_number() over (partition by EmployeeID order by SaleDate) as RN
+from SalesMaster) x
+where x.Rn=1;
+
+select * from (select SaleID,EmployeeID,SaleAmount,SaleDate,
+first_value(SaleDate) over w as FirstSaleDate,
+row_number() over w as RN
+from SalesMaster
+window w as (partition by EmployeeID order by SaleDate)
+) x
+where x.Rn=1;
+
+select SaleID,ProductID,Region,SaleAmount
+--,
+--nth_value(SaleAmount,2) over (partition by Region order by SaleAmount desc
+--range between unbounded preceding and unbounded following) as SecondMostExpensive
+from SalesMaster;
+
+select *,
+ntile(3) over (partition by Region order by SaleAmount desc) as buckets
+from SalesMaster;
+
+INSERT INTO SalesMaster (SaleID, ProductID, ProductName, EmployeeID, EmployeeName, Region, SaleAmount, UnitsSold, SaleDate, CustomerID) 
+VALUES
+(11, 1001, 'Phone',   2005, 'Eve',     'South', 5200.00, 8,  '2025-01-11', 3011),
+(12, 1002, 'Laptop',  2002, 'Bob',     'South', 8800.00, 10, '2025-01-12', 3012),
+(13, 1003, 'Tablet',  2003, 'Charlie', 'North', 4700.00, 7,  '2025-01-13', 3013),
+(14, 1004, 'Monitor', 2004, 'David',   'East',  5300.00, 9,  '2025-01-14', 3014),
+(15, 1001, 'Phone',   2001, 'Alice',   'North', 6100.00, 10, '2025-01-15', 3015),
+(16, 1002, 'Laptop',  2005, 'Eve',     'South', 6700.00, 12, '2025-01-16', 3016),
+(17, 1003, 'Tablet',  2004, 'David',   'East',  3900.00, 6,  '2025-01-17', 3017),
+(18, 1002, 'Laptop',  2003, 'Charlie', 'North', 7800.00, 13, '2025-01-18', 3018),
+(19, 1001, 'Phone',   2001, 'Alice',   'North', 5700.00, 11, '2025-01-19', 3019),
+(20, 1004, 'Monitor', 2005, 'Eve',     'South', 6200.00, 7,  '2025-01-20', 3020);
+
+select ProductName,Region,UnitsSold,
+ntile(4) over (partition by ProductName order by UnitsSold desc) as SellingRange
+from SalesMaster;
+
+select Region,ProductName,UnitsSold,
+case when x.SellingRange=1 then 'Top Tier'
+     when x.SellingRange=2 then 'Middle Tier'
+     when x.SellingRange=3 then 'Lower RTier'
+     end
+as Tiers
+from 
+    (select Region,ProductName,UnitsSold,
+    ntile(3) over (partition by Region order by UnitsSold desc) as SellingRange
+    from SalesMaster) x
+;
+
+select ProductName,SaleAmount,
+cume_dist() over (order by SaleAmount desc) as SellingRange
+from SalesMaster;
+
+create table #EmployeeSalaries (
+    EmployeeID int,
+    Department varchar(50),
+    Salary decimal(10, 2)
+);
+
+insert into #EmployeeSalaries (EmployeeID, Department, Salary)
+values
+(101, 'Sales', 50000.00),
+(102, 'Sales', 50000.00),
+(103, 'Sales', 65000.00),
+(104, 'Sales', 90000.00),
+(201, 'Marketing', 45000.00),
+(202, 'Marketing', 55000.00),
+(203, 'Marketing', 55000.00),
+(204, 'Marketing', 80000.00),
+(301, 'IT', 70000.00),
+(302, 'IT', 85000.00),
+(303, 'IT', 85000.00),    
+(304, 'IT', 100000.00);
+
+select * from #EmployeeSalaries;
+
+select *,
+cume_dist() over (partition by Department order by Salary) as Percn
+from #EmployeeSalaries;
+
+select *,
+cast((cume_dist() over (order by Salary)*100) as decimal(10,2)) as SalaryPercent
+from #EmployeeSalaries x
+;
+
+select * from SalesMaster;
+
+select ProductID,ProductName,Region,SaleAmount,
+cast(cume_dist() over (partition by Region Order by SaleAmount)*100 as decimal(10,2)) as [Cum_dist],
+cast(percent_rank() over (partition by Region Order by SaleAmount)*100 as decimal(10,2)) as [Perc_dist]
+from SalesMaster;
+
+select ProductID,ProductName,region,SaleAmount,
+cast(percent_rank() over (order by SaleAmount) as decimal(10,2))*100 as Pct
+from SalesMaster;
+
+select *,
+percent_rank() over (partition by Department order by Salary) as Percn
+from #EmployeeSalaries;
+
+select * from Employees;
+
+select * from SalesData;
+
+select distinct product_name from SalesData;
+select product_name from SalesData;
+select * from SalesMaster;
+
+select order_id,category,Sales,
+rank() over (partition by category order by sales desc) as RankBySales
+from SalesData;
+
+select * from(select order_id,region,profit,
+row_number() over (partition by region order by profit desc) as RN
+from SalesData) x
+where x.RN=3;
+
+select order_id,order_date,profit,
+lag(profit) over (order by order_date) as PreviousProfit
+from SalesData;
+
+select customer_name,cast(order_date as date) as order_date,profit,
+lead(profit) over (partition by customer_name order by order_date) as NextProfit
+from SalesData;
+
+select region,category,count(order_id) as Total_orders,
+sum(profit) as TotalProfit
+from SalesData
+group by region,category
+order by region;
+
+select * from Employees E
+full outer join
+ Departments D
+on E.DepartmentID=D.DepartmentID;
+
+select * from Employees;
+select * from Departments;
+select * from Employees;
+select EmployeeID,Name,DepartmentID,Salary
+from Employees E
+where E.salary>(select avg(Salary) from Employees where DepartmentID=E.DepartmentID);
+
+(select avg(Salary) from Employees E
+where DepartmentID=E.DepartmentID);
+
+use PracticeDB;
+
+select product_name,sales
+from SalesData
+where sales>(select avg(Sales) from SalesData);
+
+select distinct customer_name from Salesdata
+where customer_id in(
+select CUSTOMER_ID from SalesData
+where category='Technology' and PROFIT<0);
+
+select avg(sales) from SalesData
+where order_id in(
+select order_id from Salesdata
+group by order_id
+having sum(profit) > 500) ;
+
+select ship_mode,avg(profit)
+from Salesdata
+where 
+order_id in(
+select sum(profit) from Salesdata
+group by order_id)
+group by Ship_mode;
+
+select x.ship_mode,avg(x.TotalProfit) from 
+(select order_id,ship_mode,sum(profit) as TotalProfit from SalesData group by order_id,ship_mode) x
+group by ship_mode;
+
+select x.ship_mode,avg(x.TotalProfit) from 
+(select ship_mode,sum(profit) as TotalProfit from SalesData group by ship_mode) x
+group by ship_mode;
+
+select * from SalesData;
+
+select STATE,avg(sales)from SalesData
+group by State;
+
+select state,avg(TotalSales) from 
+(select order_id,state,sum(sales) as TotalSales from SalesData where profit<0 group by order_id,State) x
+group by state;
+
+select distinct state from Salesdata;
+
+
+
+select * from patients;
+
+select count(*) from patients;
+
+select patient_id,name,count(name) from patients
+group by patient_id,name
+;
+
+select * from patients;
+
+select x.* 
+--row_number() over (partition by x.satisfactorylevel) as rowNum
+from 
+(select patient_id,name,satisfaction,
+ntile(3) over(order by satisfaction desc) as satisfactorylevel
+from patients) x;
+
+WITH GroupedPatients AS (
+SELECT patient_id,name,satisfaction,
+NTILE(3) OVER (ORDER BY satisfaction DESC) AS satisfactorylevel
+FROM patients
+),
+RankedGroups AS (
+SELECT *,
+ROW_NUMBER() OVER (PARTITION BY satisfactorylevel ORDER BY satisfaction DESC) AS RowInGroup
+FROM
+GroupedPatients
+)
+SELECT
+    patient_id,
+    name,
+    satisfaction,
+    satisfactorylevel
+FROM
+    RankedGroups
+WHERE
+    RowInGroup <= 10; -- Filter to keep only the top 10 from each tier
+
+select * from patients;
+
+with GroupedPatients as(
+select patient_id,name,satisfaction,
+ntile(3) over (order by satisfaction desc) as SatisfactoryLevel
+from patients),
+RankedGroups as (
+select *,
+row_number() over (partition by SatisfactoryLevel order by satisfaction desc) as rowNum
+from GroupedPatients)
+select patient_id,name
+from RankedGroups
+where rowNum<11;
+
+select name,satisfaction from patients
+where satisfaction>(select avg(satisfaction) from patients);
+
+select * from (select patient_id,name,cast(arrival_date as date) as ArrivalDate,
+row_number() over (partition by datepart(month,arrival_date) order by arrival_date) as RowN
+from patients
+where datepart(month,arrival_date) in (3,6,12)) x
+where x.RowN<11;
+
+select * from SalesMaster;
+
+with RegionSales as(
+select Region,ProductName,SaleDate,SaleAmount,
+row_number () over (partition by Region order by SaleDate desc) as RecentOrder
+from SalesMaster)
+select  top 1 * from RegionSales
+order by RecentOrder desc;
+
+
+select distinct service from patients;
+
+select count(*) as NOOFROWS from patients;
+select min(satisfaction) from patients;
+
+select top 1 satisfaction,count(satisfaction)as satcount from patients
+group by satisfaction order by satcount desc;
