@@ -1,0 +1,152 @@
+use PracticeDB;
+
+select * from Appointments;
+
+select datediff(week,StartTime,getdate()) from Appointments;
+
+select * from SalesMaster
+where SaleAmount>(select avg(SaleAmount) from SalesMaster);
+
+select EmployeeID,sum(SaleAmount) as TotalSales
+from SalesMaster
+group by EmployeeID
+having sum(SaleAmount)>(
+select avg(TotalSales) from (
+select EmployeeID,sum(SaleAmount) as TotalSales
+from SalesMaster
+where Region='South'
+group by EmployeeID
+) as SouthSales
+);
+
+select EmployeeID,SaleAmount from SalesMaster
+where Region='South';
+
+select top 10 * from CrimeReport;
+
+select Incident_Code,count(Incident_Code) as NoOfIncidents from CrimeReport
+group by Incident_Code having count(Incident_Code)>1;
+
+select top 1 * from CrimeReport;
+
+select IncidntNum,Incident_Code,Address,Date from CrimeReport
+where Incident_Code in (select Incident_Code from CrimeReport group by Incident_Code
+having count(Incident_Code)>1);
+
+select PdDistrict from CrimeReport
+group by PdDistrict
+having count(*) >(select avg(TotalIncidents) from (
+		select PdDistrict,count(*) as TotalIncidents
+		from CrimeReport
+		group by PdDistrict) x )
+
+select PdDistrict,count(*) as NoOfIncidents from CrimeReport
+group by PdDistrict
+having count(*) > 5000;
+
+select top 1 * from CrimeReport;
+
+select Category,count(*) from CrimeReport
+group by Category
+having count(*)>10000;
+
+select DayOfWeek from CrimeReport
+group by DayOfWeek
+having count(*)>2000;
+
+select Resolution from CrimeReport
+group by Resolution
+having count(distinct PdDistrict)>1
+order by Resolution;
+
+select * from SalesMaster;
+
+select sum(SaleAmount) from SalesMaster
+where ProductName='Tablet';
+
+select Region,sum(SaleAmount),sum(UnitsSold) from SalesMaster
+where ProductName='Tablet'
+group by Region;
+
+select EmployeeName,sum(SaleAmount)
+from SalesMaster
+where ProductName='Tablet'
+group by EmployeeName
+having sum(SaleAmount)>3500;
+
+select Region from SalesMaster
+where ProductName='Tablet'
+group by Region
+having avg(SaleAmount)>(select avg(SaleAmount) from SalesMaster where ProductName='Tablet')
+
+select * from SalesMaster;
+
+select distinct EmployeeID from SalesMaster;
+
+select EmployeeID,SaleID,Region,SaleAmount,SaleDate
+from SalesMaster
+order by EmployeeID;
+
+select EmployeeID,Region,sum(SaleAmount) as TotalSalesAmount,
+count(SaleID) as TotalSales,
+count(distinct ProductID) as ProductsSold
+from SalesMaster
+group by EmployeeID,Region
+order by EmployeeID;
+
+select Region,EmployeeName,sum(SaleAmount) as TotalRegionalSales,
+sum(SaleAmount) over (partition by Region) as TotalSales
+from SalesMaster
+group by Region,EmployeeName
+order by Region;
+
+
+select x.*,
+cast((x.EmployeeRegionalSales/X.RegionTotal)*100 as decimal(10,2)) as ContributionPercent
+from 
+(select distinct Region,EmployeeName,
+	sum(SaleAmount) over (partition by Region) as RegionTotal,
+	sum(SaleAmount) over (partition by Region,EmployeeName) as EmployeeRegionalSales
+	from SalesMaster)x 
+where 
+cast((x.EmployeeRegionalSales/X.RegionTotal)*100 as decimal(10,2))<50;
+
+select distinct Region,EmployeeName from SalesMaster
+order by EmployeeName;
+
+select EmployeeName from SalesMaster
+group by EmployeeName
+having count(distinct Region)>1;
+
+select EmployeeName,ProductID,ProductName,sum(SaleAmount) as SalesTotal
+from SalesMaster 
+where 
+EmployeeName in (select EmployeeName from SalesMaster
+group by EmployeeName
+having count(distinct ProductID)>1)
+group by EmployeeName,ProductID,ProductName;
+
+--drop table NetflixTitles;
+
+
+select * from Employees;
+
+select * from Customers;
+
+alter table Customers
+add departmentID int ;
+
+update Customers
+set departmentID=1
+where customer_id=7
+
+select * from SalesMaster;
+
+select datepart(month,SaleDate) as Month,count(SaleID) as Sales
+from SalesMaster
+group by datepart(month,SaleDate);
+
+select ProductID,Region,sum(UnitsSold) as TotalUnits
+from SalesMaster
+group by ProductID,Region
+order by Region,ProductID;
