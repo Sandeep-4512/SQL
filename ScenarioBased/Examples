@@ -58,7 +58,7 @@ from
     production.products P on OI.product_id=P.product_id
     join production.categories CG on P.category_id=CG.category_id
 group by 
-    C.customer_id,C.first_name,C.last_name,CG.category_name,P.product_name,CG.category_id
+    C.customer_id,C.first_name,C.last_name,CG.category_name,P.product_name,CG.category_id;
 
 --4.Calculate the Year-over-Year Sales Growth.
 -------------------------------------------------------------
@@ -66,7 +66,7 @@ use BikeStorePracticeDB;
 select 
     X.*,
     --calculate growth percentage
-    (TotalSales-nullif(PreviousYearSales,0))/PreviousYearSales*100 as GrowthPercent
+    concat(cast((TotalSales-nullif(PreviousYearSales,0))/PreviousYearSales*100 as decimal(4,2)),'%') as GrowthPercent
 from
     (
     --calculate year by year total sales and previous sales
@@ -87,11 +87,15 @@ from
 use BikeStorePracticeDB;
 select 
     ST.store_id,ST.store_name,O.order_date,
-    sum(OI.quantity*OI.list_price) over (partition by ST.store_id order by O.order_date,O.customer_id) as RunningTotalSales
+    sum(OI.quantity*OI.list_price) as DailySales,
+    sum(sum(OI.quantity*OI.list_price)) over (partition by ST.store_id order by O.order_date) as CumulativeRevenue
 from 
     sales.Orders O join sales.stores ST on
     O.store_id=ST.store_id join sales.order_items OI
-    on O.order_id=OI.order_id;
+    on O.order_id=OI.order_id
+group by 
+    ST.store_id,ST.store_name,O.order_date;
+        
 
 --6.
 -------------------------------------------------------------------------
@@ -201,17 +205,16 @@ group by
 -----------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
 select 
-    CG.category_name,P.product_name,
+    CG.category_id,CG.category_name,P.product_name,
     sum(OI.quantity*OI.list_price) as TotalSales,
-    rank() over (partition by CG.category_name order by sum(OI.quantity*OI.list_price) desc) as Rnk
+    rank() over (partition by CG.category_id order by sum(OI.quantity*OI.list_price) desc) as Rnk
 from 
     sales.order_items OI join production.products P
     on OI.product_id=P.product_id join
     production.categories CG on P.category_id=CG.category_id
 group by 
-    CG.category_name,P.product_name
+    CG.category_id,CG.category_name,P.product_name;
 
- ;
 
 --12.Find all customers who have placed an order every month in the last 6 months.
 ----------------------------------------------------------------------------------------------
@@ -244,7 +247,7 @@ having
 use BikeStorePracticeDB;
 with X as (
     select 
-        C.city,CG.category_name,
+        C.city,CG.category_id,CG.category_name,
         sum(OI.quantity*OI.list_price) as TotalSales,
         rank() over (partition by C.city order by sum(OI.quantity*OI.list_price) desc) as CategoryRank
     from 
@@ -254,7 +257,7 @@ with X as (
         on OI.product_id=P.product_id join production.categories CG
         on P.category_id=CG.category_id
     group by 
-        C.city,CG.category_name
+        C.city,CG.category_id,CG.category_name
 )
 select 
     * 
@@ -328,19 +331,22 @@ select * from StoreRank
 where Rnk<=3;
 
 ------------------------------------------------------------------alternate way--------------------------
-select *  from (
-    select 
-        X.store_id,X.store_name,max(X.cumReve) as MaxCumRev,
-        rank() over (order by max(X.cumReve) desc) as Rnk
-    from(
-            select 
-                ST.store_id,ST.store_name,O.order_date,
-                sum(OI.quantity*OI.list_price) over (partition by ST.store_id order by O.order_date ) as cumReve
-            from 
-                sales.stores ST join sales.orders O on ST.store_id=O.store_id join sales.order_items OI on O.order_id=OI.order_id
-        ) X
-     group by 
-        X.store_id,X.store_name
+select 
+    *  
+from 
+    (
+        select 
+            X.store_id,X.store_name,max(X.cumReve) as MaxCumRev,
+            rank() over (order by max(X.cumReve) desc) as Rnk
+        from(
+                select 
+                    ST.store_id,ST.store_name,O.order_date,
+                    sum(OI.quantity*OI.list_price) over (partition by ST.store_id order by O.order_date ) as cumReve
+                from 
+                    sales.stores ST join sales.orders O on ST.store_id=O.store_id join sales.order_items OI on O.order_id=OI.order_id
+            ) X
+         group by 
+            X.store_id,X.store_name
         ) Y
 where Y.Rnk<=3;
 
@@ -424,19 +430,20 @@ with X as (
     group by 
         ST.store_id,O.order_date,ST.store_name
 )
-select * from (select 
-    X.store_id,X.store_name,X.order_date,
-    lag(X.DailySales) over (partition by X.store_id order by X.order_date) as PreviousDaySales,X.DailySales,
-    lead(X.DailySales) over (partition by X.store_id order by X.order_date) as NextDaySales,
-    (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date)) as SalesDifference,
-    case
-        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))<0 then 'Decreased Sales'
-        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))=0 then 'No change'
-        when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))>0 then 'Increased Sales'
-        else 'No previous Sales'
-    end as GrowthImpact
-from 
-    X) Y
+select * from (
+    select 
+        X.store_id,X.store_name,X.order_date,
+        lag(X.DailySales) over (partition by X.store_id order by X.order_date) as PreviousDaySales,X.DailySales,
+        lead(X.DailySales) over (partition by X.store_id order by X.order_date) as NextDaySales,
+        (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date)) as SalesDifference,
+        case
+            when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))<0 then 'Decreased Sales'
+            when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))=0 then 'No change'
+            when (X.DailySales-lag(X.DailySales) over (partition by X.store_id order by X.order_date))>0 then 'Increased Sales'
+            else 'No previous Sales'
+        end as GrowthImpact
+    from 
+         X) Y
 --where GrowthImpact='Decreased Sales';
 GO
 
@@ -652,7 +659,7 @@ order by
 ------------------------------------------------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
 select TOP 5
-    P.product_id,P.product_name,sum(OI.quantity*OI.list_price) as TotalSales
+    P.product_id,P.product_name,sum(OI.quantity) as TotalQuantity
 from
     sales.order_items OI join production.products P on OI.product_id=P.product_id
     join production.brands B on P.brand_id=B.brand_id
@@ -680,7 +687,7 @@ where
 group by
     P.product_id,P.product_name
 order by
-    TotalSales desc;
+    TotalQuantity desc;
 
 
 --5.Find customers who bought all products in a specific category (e.g., 'Mountain Bikes').
@@ -711,45 +718,28 @@ having--compare the no of purchased products to total no of products
 --6.List the names of staff who have handled orders totaling more than the store manager’s orders in the same store.
 --------------------------------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
-with StaffRevenue as (
-    select
-        S.staff_id,
-        S.store_id,
-        sum(OI.quantity * OI.list_price * (1 - OI.discount)) as total_staff_revenue
-    from
-        sales.staffs as S join sales.orders as O on S.staff_id = O.staff_id
-        join sales.order_items as OI on O.order_id = OI.order_id
-    group by
-        S.staff_id,
-        S.store_id
-),
-ManagerRevenue as (
-    select
-        S.store_id,
-        S.manager_id as manager_staff_id,
-        SR.total_staff_revenue as total_manager_revenue
-    from
-        sales.staffs as S join StaffRevenue as SR 
-        on S.manager_id = SR.staff_id and S.store_id = SR.store_id          
-    group by
-        S.store_id,
-        S.manager_id,
-        SR.total_staff_revenue
+with staff_orders as (
+    select 
+        concat(s.first_name, ' ', s.last_name) as staff_name,
+        s.store_id, s.staff_id, s.manager_id, count(o.order_id) as total_orders
+    from 
+        sales.staffs s
+        join sales.orders o on o.staff_id = s.staff_id
+    group by 
+        concat(s.first_name, ' ', s.last_name), s.store_id, s.staff_id, s.manager_id
 )
-select
-    S.first_name,S.last_name,SRV.total_staff_revenue,MRV.total_manager_revenue,ST.store_name
-from
-    sales.staffs as S join StaffRevenue as SRV on S.staff_id = SRV.staff_id
-    join ManagerRevenue as MRV on S.store_id = MRV.store_id join 
-    sales.stores as ST on S.store_id = ST.store_id
-where
-    S.staff_id <> MRV.manager_staff_id
-    AND SRV.total_staff_revenue > MRV.total_manager_revenue
-order by
-    ST.store_name,
-    SRV.total_staff_revenue desc;
-
-
+select 
+    so.staff_name, 
+    so.total_orders as StaffTotalOrders,
+    so.store_id,
+    m.staff_name AS manager_name,
+    m.total_orders AS manager_total_orders
+from 
+    staff_orders so join staff_orders m
+    on so.manager_id = m.staff_id
+    and so.store_id = m.store_id
+where 
+    so.total_orders > m.total_orders;
 
 --7.Show the product with the second highest revenue
 --------------------------------------------------------------------------------------------------------------------------
@@ -770,37 +760,57 @@ fetch next 1 rows only;
 --8.List customers whose total order amount is higher than every customer in a specific store (e.g., store_id = 3).
 -------------------------------------------------------------------------------------------------------------------------
 use BikeStorePracticeDB;
-select TOP 1
+select
     C.customer_id,C.first_name,C.last_name,sum(OI.quantity*OI.list_price) as TotalSales
 from 
     sales.customers c join sales.orders O on O.customer_id=C.customer_id
     join sales.stores ST on O.store_id=ST.store_id join sales.order_items OI
     on O.order_id=OI.order_id
-where
-    ST.store_id=3
 group by
     C.customer_id,C.first_name,C.last_name
-order by 
-    TotalSales desc;
-
+having 
+    sum(OI.quantity*OI.list_price)>(
+        select 
+            max(TotalSales) 
+        from (
+            select 
+                C.customer_id,sum(OI.quantity*OI.list_price) as TotalSales
+            from 
+                sales.customers C join sales.orders O on
+                C.customer_id=O.customer_id join sales.stores ST on
+                O.store_id=ST.store_id join sales.order_items OI on
+                O.order_id=OI.order_id
+            where 
+                ST.store_id=3
+            group by
+                C.customer_id
+             ) X  
+        );
 
 --9.Find the brand(s) whose cheapest product is more expensive than the most expensive product of another brand.
 --------------------------------------------------------------------------------------------
---use BikeStorePracticeDB;
---with BrandedPrices as(
---select 
---    B.brand_id,B.brand_name,
---    min(P.list_price) as MinimumPriced,
---    max(P.list_price) as MaxPriced
---from
---    production.products P join production.brands B 
---    on P.brand_id=B.brand_id
---group by
---    B.brand_id,B.brand_name
---)
+use BikeStorePracticeDB;
+with CheapExpensive as(
+	select
+		B.brand_id,B.brand_name,
+		min(list_price) as Cheapest,
+		max(list_price) as Expensive
+	from
+		production.brands B join production.products P
+		on B.brand_id=P.brand_id
+	group by
+		B.brand_id,B.brand_name
+)
+select
+	B1.brand_id,B1.brand_name,B1.Cheapest,
+    B2.brand_id,B2.brand_name,B2.Expensive
+from
+	CheapExpensive B1 join CheapExpensive B2
+	on B1.brand_id<>B2.brand_id
+where
+	B1.Cheapest>B2.Expensive
+order by B1.brand_id;
 
-
-        
 
 
 --10.Identify stores where no staff member has processed an order in the last 6 months.
@@ -821,5 +831,73 @@ where
                     );
 
 
+--1.PARTITION BY with LEAD & LAG - Comparing Daily Sales: Compare values to previous/next rows within a group.
+---------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+with DailySales as(
+    select 
+        ST.store_id,O.order_date,
+        sum(OI.quantity*OI.list_price) as DailySalesTotal
+    from 
+        sales.stores ST join sales.orders O on ST.store_id=O.store_id
+        join sales.order_items OI on O.order_id=OI.order_id
+    group by
+        ST.store_id,O.order_date
+)
+select 
+    DailySales.*,
+    lag(DailySalesTotal) over (partition by store_id order by order_date) as PreviousDaySales,
+    lead(DailySalesTotal) over (partition by store_id order by order_date) as NextdaySales,
+    DailySalesTotal-lag(DailySalesTotal) over (partition by store_id order by order_date) as SalesDifference
+from
+    DailySales;
+    
+--2.List stores that have sold products from every category available in the production.categories table.
+----------------------------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select 
+    ST.store_id,ST.store_name
+from
+    sales.stores ST join sales.orders O on ST.store_id=O.store_id
+    join sales.order_items OI on O.order_id=OI.order_id
+    join production.products P on P.product_id=OI.product_id
+    join production.categories CG on P.category_id=CG.category_id
+group by
+    ST.store_id,ST.store_name
+having count(distinct CG.category_id)=(select count(distinct category_id) from production.categories);
 
 
+--3.Identify customers who placed orders in exactly 3 different months in the last calendar year.
+-----------------------------------------------------------------------------
+use BikeStorePracticeDB;
+select 
+    C.customer_id,C.first_name,C.last_name
+from
+    sales.customers C join sales.orders O on 
+    C.customer_id=O.customer_id
+where
+    O.order_date>=dateadd(year,-1,getdate())
+group by
+    C.customer_id,C.first_name,C.last_name
+having count(distinct(year(O.order_date)*100+month(O.order_date)))=3;
+
+--4.List the top 5 products by total revenue for each brand (use Net Revenue).
+--------------------------------------------------------------------------------------------------------------------------
+select 
+    * 
+from   
+    (
+    select 
+        B.brand_id,B.brand_name,P.product_id,P.product_name,
+        sum(OI.quantity*OI.list_price*(1-discount)) as TotalRevenue,
+        rank() over (partition by B.brand_id order by sum(OI.quantity*OI.list_price*(1-discount)) desc) as Rank
+    from
+        production.brands B join production.products P on
+        P.brand_id=B.brand_id join sales.order_items OI on
+        OI.product_id=P.product_id
+    group by
+        B.brand_id,B.brand_name,P.product_id,P.product_name
+      )
+      X
+where
+    X.Rank<=5;
